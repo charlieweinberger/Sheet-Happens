@@ -105,6 +105,7 @@ export function ParticipantCard({
           <ParticipantSeats
             ref={seatsRef}
             seats={participant.seats}
+            needsReview={participant.needsManualReviewDriverCapacity}
             forceEditMode={isEditing}
           />
         )}
@@ -117,6 +118,7 @@ export function ParticipantCard({
           ref={notesRef}
           extraComments={participant.extraComments}
           appNotes={participant.appNotes}
+          needsReview={participant.needsManualReviewNotes}
           forceEditMode={isEditing}
         />
       </CardContent>

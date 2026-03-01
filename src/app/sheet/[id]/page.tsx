@@ -1,19 +1,23 @@
 import { OperationsStudio } from "@/components/operations-studio";
 import { getEventData } from "@/lib/eventStore";
+import { listGoogleSheets } from "@/lib/googleSheets";
 
 export const dynamic = "force-dynamic";
 
 export default async function SheetPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  // For now, we ignore the sheet ID and just load the mock data
-  // In the future, we'll use the ID to fetch data from Google Sheets
-  const data = await getEventData();
+  const { id: sheetId } = await params;
   
-  // Hardcoded sheet name for now - will come from Google Sheets API later
-  const sheetName = "IrvineHacks 2026 Event Data";
+  // Fetch data from the selected Google Sheet
+  const data = await getEventData(sheetId);
+  
+  // Get the sheet name from the available sheets list
+  const sheets = await listGoogleSheets();
+  const sheet = sheets.find(s => s.id === sheetId);
+  const sheetName = sheet?.name || "Unknown Sheet";
   
   return <OperationsStudio initialData={data} sheetName={sheetName} />;
 }

@@ -21,6 +21,7 @@ export function SheetList() {
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "name-desc" | "date">("name");
 
   useEffect(() => {
     async function fetchSheets() {
@@ -54,6 +55,16 @@ export function SheetList() {
     }
   };
 
+  const sortedSheets = [...sheets].sort((a, b) => {
+    if (sortBy === "name") {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === "name-desc") {
+      return b.name.localeCompare(a.name);
+    } else {
+      return new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime();
+    }
+  });
+
   return (
     <div className="container mx-auto py-12 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -65,6 +76,24 @@ export function SheetList() {
             Select a Google Sheet to manage event logistics
           </p>
         </div>
+
+        {!loading && sheets.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="sort" className="text-sm font-medium">
+              Sort by:
+            </label>
+            <select
+              id="sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "name" | "name-desc" | "date")}
+              className="border border-zinc-300 rounded-md px-3 py-1.5 text-sm bg-white hover:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:border-transparent"
+            >
+              <option value="name">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="date">Last Edited</option>
+            </select>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
@@ -89,7 +118,7 @@ export function SheetList() {
 
         {!loading && sheets.length > 0 && (
           <div className="grid gap-4">
-            {sheets.map((sheet) => (
+            {sortedSheets.map((sheet) => (
               <Link key={sheet.id} href={`/sheet/${sheet.id}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardHeader>

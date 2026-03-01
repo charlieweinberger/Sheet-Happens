@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface ParticipantSeatsProps {
   seats: number;
+  needsReview?: boolean;
   forceEditMode?: boolean;
 }
 
 export const ParticipantSeats = forwardRef<
   { getValue: () => number },
   ParticipantSeatsProps
->(({ seats, forceEditMode = false }, ref) => {
+>(({ seats, needsReview = false, forceEditMode = false }, ref) => {
   const [seatsValue, setSeatsValue] = useState(seats.toString());
 
   // Sync state when props change
@@ -29,9 +31,14 @@ export const ParticipantSeats = forwardRef<
   return (
     <>
       {!forceEditMode && (
-        <div className="text-xs">
+        <div className="text-xs flex items-center gap-2">
           <span className="font-semibold text-zinc-700">Car Seats: </span>
           <span className="text-zinc-600">{seats}</span>
+          {needsReview && (
+            <Badge variant="warning" className="text-[10px] py-0 px-1.5">
+              Needs Review
+            </Badge>
+          )}
         </div>
       )}
       {forceEditMode && (
@@ -48,6 +55,11 @@ export const ParticipantSeats = forwardRef<
             autoFocus
             className="w-24"
           />
+          {needsReview && (
+            <Badge variant="warning" className="text-[10px] py-0 px-1.5">
+              Needs Review
+            </Badge>
+          )}
         </div>
       )}
     </>

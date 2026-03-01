@@ -1,50 +1,70 @@
 import { google } from "googleapis";
-import { mockSheetParticipants } from "@/lib/mockData";
 import type { Participant } from "@/types";
 
 type SheetRow = {
-  id?: string;
-  name?: string;
-  phone?: string;
-  email?: string;
   timestamp?: string;
-  driver?: string;
-  seats?: string;
-  selfDriver?: string;
-  extraComments?: string;
-  notes?: string;
-  preferredRidePartners?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  discord?: string;
+  rideSituation?: string;
+  driverCapacity?: string;
+  comments?: string;
 };
 
-function parseBool(value: string | undefined): boolean {
-  if (!value) return false;
-  return ["true", "yes", "1", "y"].includes(value.toLowerCase().trim());
-}
-
 function rowToParticipant(row: SheetRow, idx: number) {
-  const id = row.id?.trim() || `${idx + 1}`;
-  const preferredPartnersStr = row.preferredRidePartners?.trim() || "";
-  const preferredRidePartners: string[] = preferredPartnersStr
-    ? preferredPartnersStr
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-
-  const isSelfDriver = parseBool(row.selfDriver);
-  const isDriver = parseBool(row.driver);
+  // Use email as ID for stable identification across sheet updates
+  const email = row.email?.trim() || `unknown-${idx + 1}@example.com`;
+  const id = email;
+  
+  // Parse ride situation to determine driver/rider status
+  const rideSituation = row.rideSituation?.trim().toLowerCase() || "";
+  let isDriver = false;
+  let isSelfDriver = false;
+  
+  if (rideSituation.includes("provide rides")) {
+    // "I have my own ride and can provide rides to others! (Thank you!!)"
+    isDriver = true;
+    isSelfDriver = false;
+  } else if (rideSituation.includes("i have my own ride")) {
+    // "I have my own ride!"
+    isDriver = false;
+    isSelfDriver = true;
+  } else {
+    // "I need a ride!" or anything else defaults to rider
+    isDriver = false;
+    isSelfDriver = false;
+  }
+  
+  // Parse driver capacity - always flag for manual review if they're a driver
+  let seats = 0;
+  const needsManualReviewDriverCapacity = isDriver;
+  if (isDriver && row.driverCapacity) {
+    const capacityMatch = row.driverCapacity.match(/\d+/);
+    seats = capacityMatch ? Number(capacityMatch[0]) : 0;
+  }
+  
+  // Parse comments - flag for manual review if non-empty
+  const extraComments = row.comments?.trim() || "";
+  const needsManualReviewNotes = extraComments.length > 0;
+  
+  // For now, we don't parse preferred ride partners from comments
+  // That will be handled during manual review
+  const preferredRidePartners: string[] = [];
 
   return {
     id,
-    name: row.name?.trim() || `Participant ${id}`,
+    name: row.name?.trim() || `Participant ${idx + 1}`,
     phone: row.phone?.trim() || "",
-    email: row.email?.trim() || `unknown-${id}@example.com`,
+    email: email,
     timestamp: row.timestamp?.trim() || new Date().toISOString(),
-    driver: isDriver && !isSelfDriver,
-    seats: isDriver && !isSelfDriver ? Number(row.seats || 0) || 0 : 0,
+    driver: isDriver,
+    seats,
     selfDriver: isSelfDriver,
-    extraComments: row.extraComments?.trim() || "",
-    preferredRidePartners: preferredRidePartners || [],
+    extraComments,
+    preferredRidePartners,
+    needsManualReviewDriverCapacity,
+    needsManualReviewNotes,
   } satisfies Omit<
     Participant,
     "status" | "isOfficer" | "appNotes" | "carId" | "seatIndex" | "checkInState"
@@ -98,7 +118,9 @@ export async function listGoogleSheets(): Promise<GoogleSheetMetadata[]> {
     const files = response.data.files ?? [];
     return files.map((file) => ({
       id: file.id || "",
-      name: (file.name || "Untitled").replace(/ \(responses\)$/, ""),
+      name: (file.name || "Untitled")
+        .replace(/ \(responses\)$/i, "")
+        .replace(/ \(Responses\)$/i, ""),
       modifiedTime: file.modifiedTime || new Date().toISOString(),
     }));
   } catch (error) {
@@ -107,13 +129,15 @@ export async function listGoogleSheets(): Promise<GoogleSheetMetadata[]> {
   }
 }
 
-export async function fetchSheetParticipants() {
-  const sheetId = process.env.GOOGLE_SHEET_ID;
-  const sheetRange = process.env.GOOGLE_SHEET_RANGE ?? "Form Responses 1!A:I";
+export async function fetchSheetParticipants(sheetId?: string) {
+  const defaultSheetId = process.env.GOOGLE_SHEET_ID;
+  const targetSheetId = sheetId || defaultSheetId;
+  const sheetRange = process.env.GOOGLE_SHEET_RANGE ?? "Form Responses 1!A:H";
   const serviceAccount = extractServiceAccount();
 
-  if (!sheetId || !serviceAccount) {
-    return mockSheetParticipants;
+  if (!targetSheetId || !serviceAccount) {
+    console.warn("Missing Google Sheets credentials or sheet ID");
+    return [];
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -123,33 +147,35 @@ export async function fetchSheetParticipants() {
 
   const sheets = google.sheets({ version: "v4", auth });
   const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
+    spreadsheetId: targetSheetId,
     range: sheetRange,
   });
 
   const rows = response.data.values ?? [];
-  if (rows.length <= 1) return mockSheetParticipants;
+  if (rows.length <= 1) return [];
 
-  const [headerRow, ...valueRows] = rows;
-  const headers = headerRow.map((h) => String(h).trim());
+  const [, ...valueRows] = rows;
 
   const objects = valueRows.map((values) => {
-    const row: Record<string, string> = {};
-    headers.forEach((header, i) => {
-      row[header] = String(values[i] ?? "");
-    });
-
+    // Map the 9 columns from the Google Form:
+    // 0: Timestamp
+    // 1: Name
+    // 2: UCI Email
+    // 3: Phone Number
+    // 4: Discord Handle
+    // 5: Ride Situation?
+    // 6: For drivers: how many passengers...
+    // 7: Any questions, comments, or concerns?
+    
     return {
-      id: row.id,
-      name: row.name,
-      phone: row.phone,
-      email: row.email,
-      timestamp: row.timestamp,
-      driver: row.driver,
-      seats: row.seats,
-      extraComments: row.extraComments,
-      notes: row.notes,
-      preferredRidePartners: row.preferredRidePartners,
+      timestamp: String(values[0] ?? ""),
+      name: String(values[1] ?? ""),
+      email: String(values[2] ?? ""),
+      phone: String(values[3] ?? ""),
+      discord: String(values[4] ?? ""),
+      rideSituation: String(values[5] ?? ""),
+      driverCapacity: String(values[6] ?? ""),
+      comments: String(values[7] ?? ""),
     } satisfies SheetRow;
   });
 

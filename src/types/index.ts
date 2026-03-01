@@ -26,6 +26,10 @@ export interface Participant {
   carId: string | null;
   seatIndex: number | null;
   checkInState: CheckInState;
+  
+  // Manual review flags
+  needsManualReviewDriverCapacity: boolean;
+  needsManualReviewNotes: boolean;
 }
 
 export interface Car {

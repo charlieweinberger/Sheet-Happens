@@ -1,6 +1,7 @@
 "use client";
 
 import { OfficerIcon } from "@/components/shared/officer-icon";
+import { Badge } from "@/components/ui/badge";
 import { getStatusSelectClass } from "@/lib/statusColors";
 import { getParticipantRoleLabel } from "@/lib/participantHelpers";
 import type { EventStatus, Participant } from "@/types";
@@ -30,6 +31,9 @@ export function ParticipantTable({
             </th>
             <th className="px-3 py-2 text-left font-semibold text-zinc-900">
               Status
+            </th>
+            <th className="px-3 py-2 text-left font-semibold text-zinc-900">
+              Review
             </th>
           </tr>
         </thead>
@@ -96,6 +100,24 @@ export function ParticipantTable({
                     <option value="present|null">Present</option>
                   </optgroup>
                 </select>
+              </td>
+              <td className="px-3 py-2">
+                <div className="flex flex-col gap-1">
+                  {participant.needsManualReviewDriverCapacity && (
+                    <Badge variant="warning" className="text-[10px] py-0 px-1.5 w-fit">
+                      Capacity
+                    </Badge>
+                  )}
+                  {participant.needsManualReviewNotes && (
+                    <Badge variant="warning" className="text-[10px] py-0 px-1.5 w-fit">
+                      Notes
+                    </Badge>
+                  )}
+                  {!participant.needsManualReviewDriverCapacity && 
+                   !participant.needsManualReviewNotes && (
+                    <span className="text-zinc-400 text-xs">-</span>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

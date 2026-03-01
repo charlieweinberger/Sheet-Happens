@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface ParticipantNotesProps {
   extraComments?: string;
   appNotes: string;
+  needsReview?: boolean;
   forceEditMode?: boolean;
 }
 
 export const ParticipantNotes = forwardRef<
   { getValue: () => string },
   ParticipantNotesProps
->(({ extraComments, appNotes, forceEditMode = false }, ref) => {
+>(({ extraComments, appNotes, needsReview = false, forceEditMode = false }, ref) => {
   const [note, setNote] = useState(appNotes);
 
   // Sync state when props change
@@ -27,9 +29,14 @@ export const ParticipantNotes = forwardRef<
   return (
     <>
       {extraComments && (
-        <div className="text-xs">
+        <div className="text-xs flex items-center gap-2">
           <span className="font-semibold text-zinc-700">Extra Comments: </span>
           <span className="text-zinc-600">{extraComments}</span>
+          {needsReview && (
+            <Badge variant="warning" className="text-[10px] py-0 px-1.5">
+              Needs Review
+            </Badge>
+          )}
         </div>
       )}
       {!forceEditMode && (

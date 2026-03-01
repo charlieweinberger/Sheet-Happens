@@ -132,8 +132,21 @@ function normalizeSeatIndexes(participants: Participant[]) {
   return normalized;
 }
 
-export async function syncFromSheet() {
-  const sheetParticipants = await fetchSheetParticipants();
+export async function syncFromSheet(sheetId?: string) {
+  const sheetParticipants = await fetchSheetParticipants(sheetId);
+  
+  // Get current sheet participant IDs
+  const sheetParticipantIds = new Set(sheetParticipants.map(p => p.id));
+  
+  // Remove database records for participants no longer in the sheet
+  const allLocalRecords = await db.select().from(participantState);
+  for (const record of allLocalRecords) {
+    if (!sheetParticipantIds.has(record.participantId)) {
+      await db
+        .delete(participantState)
+        .where(eq(participantState.participantId, record.participantId));
+    }
+  }
 
   for (const participant of sheetParticipants) {
     const existing = await db
@@ -291,8 +304,8 @@ function buildStats(participants: Participant[]): DashboardStats {
   };
 }
 
-export async function getEventData(): Promise<EventData> {
-  const participants = await syncFromSheet();
+export async function getEventData(sheetId?: string): Promise<EventData> {
+  const participants = await syncFromSheet(sheetId);
   const cars = buildCars(participants);
   const stats = buildStats(participants);
   const insights = generateMockInsights(participants);
