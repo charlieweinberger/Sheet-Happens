@@ -2,8 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Seat } from "@/components/carpool/car-seat";
-import { getSeatLabel, getSeatGridClass } from "@/lib/seatHelpers";
-import { cn } from "@/lib/utils";
+import { getSeatLabel } from "@/lib/seatHelpers";
 import type { Car, Participant } from "@/types";
 
 export function CarVisualization({
@@ -63,24 +62,119 @@ export function CarVisualization({
             </div>
 
             {/* Rear seats - layout depends on count */}
-            <div className={cn("grid gap-3", getSeatGridClass(rearSeatCount))}>
-              {Array.from({ length: rearSeatCount }).map((_, idx) => {
-                const seatIndex = idx + 1;
-                const riderId = car.seatAssignments[seatIndex] ?? null;
-                const occupant = riderId
-                  ? participantsById.get(riderId)
-                  : undefined;
-
-                return (
-                  <Seat
-                    key={seatIndex}
-                    seatId={`seat:${car.id}:${seatIndex}`}
-                    seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
-                    occupant={occupant}
-                    isDriver={false}
-                  />
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {rearSeatCount === 3 && (
+                <div className="flex gap-3">
+                  {Array.from({ length: 3 }).map((_, idx) => {
+                    const seatIndex = idx + 1;
+                    const riderId = car.seatAssignments[seatIndex] ?? null;
+                    const occupant = riderId ? participantsById.get(riderId) : undefined;
+                    return (
+                      <div key={seatIndex} className="flex-1">
+                        <Seat
+                          seatId={`seat:${car.id}:${seatIndex}`}
+                          seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                          occupant={occupant}
+                          isDriver={false}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {rearSeatCount === 4 && (
+                <>
+                  <div className="flex gap-3">
+                    {[1, 2].map((seatIndex) => {
+                      const riderId = car.seatAssignments[seatIndex] ?? null;
+                      const occupant = riderId ? participantsById.get(riderId) : undefined;
+                      return (
+                        <div key={seatIndex} className="flex-1">
+                          <Seat
+                            seatId={`seat:${car.id}:${seatIndex}`}
+                            seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                            occupant={occupant}
+                            isDriver={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-3">
+                    {[3, 4].map((seatIndex) => {
+                      const riderId = car.seatAssignments[seatIndex] ?? null;
+                      const occupant = riderId ? participantsById.get(riderId) : undefined;
+                      return (
+                        <div key={seatIndex} className="flex-1">
+                          <Seat
+                            seatId={`seat:${car.id}:${seatIndex}`}
+                            seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                            occupant={occupant}
+                            isDriver={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+              {rearSeatCount === 5 && (
+                <>
+                  <div className="flex gap-3">
+                    {[1, 2, 3].map((seatIndex) => {
+                      const riderId = car.seatAssignments[seatIndex] ?? null;
+                      const occupant = riderId ? participantsById.get(riderId) : undefined;
+                      return (
+                        <div key={seatIndex} className="flex-1">
+                          <Seat
+                            seatId={`seat:${car.id}:${seatIndex}`}
+                            seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                            occupant={occupant}
+                            isDriver={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-3 justify-center">
+                    {[4, 5].map((seatIndex) => {
+                      const riderId = car.seatAssignments[seatIndex] ?? null;
+                      const occupant = riderId ? participantsById.get(riderId) : undefined;
+                      return (
+                        <div key={seatIndex} className="flex-1 max-w-[calc(50%-0.375rem)]">
+                          <Seat
+                            seatId={`seat:${car.id}:${seatIndex}`}
+                            seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                            occupant={occupant}
+                            isDriver={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+              {(rearSeatCount < 3 || rearSeatCount > 5) && (
+                Array.from({ length: Math.ceil(rearSeatCount / 3) }).map((_, rowIdx) => (
+                  <div key={rowIdx} className="flex gap-3">
+                    {Array.from({ length: Math.min(3, rearSeatCount - rowIdx * 3) }).map((_, colIdx) => {
+                      const seatIndex = rowIdx * 3 + colIdx + 1;
+                      const riderId = car.seatAssignments[seatIndex] ?? null;
+                      const occupant = riderId ? participantsById.get(riderId) : undefined;
+                      return (
+                        <div key={seatIndex} className="flex-1">
+                          <Seat
+                            seatId={`seat:${car.id}:${seatIndex}`}
+                            seatLabel={getSeatLabel(seatIndex, rearSeatCount)}
+                            occupant={occupant}
+                            isDriver={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Back of car */}
