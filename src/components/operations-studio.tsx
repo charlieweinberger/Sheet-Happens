@@ -11,7 +11,6 @@ import { CarVisualization } from "@/components/car-visualization";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import type { Car, EventData, EventStatus, Participant } from "@/types";
 
 function DraggableRider({ participant }: { participant: Participant }) {
@@ -75,7 +74,6 @@ async function fetchJson(path: string, init?: RequestInit) {
 
 export function OperationsStudio({ initialData }: { initialData: EventData }) {
   const [data, setData] = useState(initialData);
-  const [eventMode, setEventMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -149,10 +147,6 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
     });
   }
 
-  const checkInList = filteredParticipants
-    .filter((p) => p.status !== "cancelled")
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   return (
     <main className="min-h-screen bg-zinc-100 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
@@ -162,137 +156,77 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
             <p className="text-sm text-zinc-500">Mission Control for signups, carpools, and live check-in.</p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-zinc-600">Event Mode</span>
-            <Switch checked={eventMode} onCheckedChange={setEventMode} />
-            <Button
-              variant="secondary"
-              onClick={() =>
-                mutate("/api/carpool/auto-assign", {
-                  method: "POST",
-                  body: JSON.stringify({ prioritizeOfficers: true }),
-                })
-              }
-            >
-              Auto Assign Carpools
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              mutate("/api/carpool/auto-assign", {
+                method: "POST",
+                body: JSON.stringify({ prioritizeOfficers: true }),
+              })
+            }
+          >
+            Auto Assign Carpools
+          </Button>
         </header>
 
         <DashboardSummary stats={data.stats} />
 
-        {eventMode ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Live Check-in Mode</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
-                <Input
-                  className="pl-8"
-                  placeholder="Search attendee..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                {checkInList.map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white p-3"
-                  >
-                    <div>
-                      <p className="font-medium">{participant.name}</p>
-                      <p className="text-xs text-zinc-500">{participant.checkInState ?? "pending"}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="lg"
-                        onClick={() =>
-                          updateParticipant(participant.id, {
-                            status: "present",
-                            checkInState: "present",
-                          })
-                        }
-                      >
-                        Mark Present
-                      </Button>
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        onClick={() =>
-                          updateParticipant(participant.id, {
-                            checkInState: "no_show",
-                          })
-                        }
-                      >
-                        Mark No-show
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
-            <div className="space-y-5">
+        <div className="grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+          <div className="space-y-5">
+            <Card>
+              <CardHeader>
+                <CardTitle>Participants</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-3 relative">
+                  <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
+                  <Input
+                    className="pl-8"
+                    placeholder="Search by name or email"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  {filteredParticipants.map((participant) => (
+                    <ParticipantCard
+                      key={participant.id}
+                      participant={participant}
+                      onStatusChange={(id, status: EventStatus) => updateParticipant(id, { status })}
+                      onSaveNotes={(id, appNotes) => updateParticipant(id, { appNotes })}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-5">
+            <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
               <Card>
                 <CardHeader>
-                  <CardTitle>Participants</CardTitle>
+                  <CardTitle>Carpool Board</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="mb-3 relative">
-                    <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
-                    <Input
-                      className="pl-8"
-                      placeholder="Search by name or email"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-3">
-                    {filteredParticipants.map((participant) => (
-                      <ParticipantCard
-                        key={participant.id}
-                        participant={participant}
-                        onStatusChange={(id, status: EventStatus) => updateParticipant(id, { status })}
-                        onSaveNotes={(id, appNotes) => updateParticipant(id, { appNotes })}
-                      />
+                <CardContent className="space-y-3">
+                  <UnassignedLane>
+                    {unassigned.map((participant) => (
+                      <DraggableRider key={participant.id} participant={participant} />
                     ))}
-                  </div>
+                  </UnassignedLane>
+                  {data.cars.map((car: Car) => (
+                    <CarVisualization
+                      key={car.id}
+                      car={car}
+                      participantsById={participantsById}
+                    />
+                  ))}
                 </CardContent>
               </Card>
-            </div>
+            </DndContext>
 
-            <div className="space-y-5">
-              <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Carpool Board</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <UnassignedLane>
-                      {unassigned.map((participant) => (
-                        <DraggableRider key={participant.id} participant={participant} />
-                      ))}
-                    </UnassignedLane>
-                    {data.cars.map((car: Car) => (
-                      <CarVisualization
-                        key={car.id}
-                        car={car}
-                        participantsById={participantsById}
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
-              </DndContext>
-
-              <InsightPanel insights={data.insights} />
-            </div>
+            <InsightPanel insights={data.insights} />
           </div>
-        )}
+        </div>
 
         {isPending ? (
           <p className="text-sm text-zinc-500">Updating operations board…</p>
