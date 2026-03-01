@@ -617,3 +617,180 @@ export async function autoAssignCars(
 
   return getEventData(sheetId);
 }
+
+/**
+ * Update participant driver status
+ * Can convert between driver/self-driver/rider
+ */
+export async function updateParticipantDriverStatus(
+  participantId: string,
+  isDriver: boolean,
+  isSelfDriver: boolean,
+  sheetId?: string,
+) {
+  const participants = await syncFromSheet(sheetId);
+  const participant = participants.find((p) => p.id === participantId);
+
+  if (!participant) {
+    return getEventData(sheetId);
+  }
+
+  // If converting to rider, remove from carpool
+  const updateData: Record<string, unknown> = {
+    driver: isDriver,
+    selfDriver: isSelfDriver,
+    updatedAt: new Date(),
+  };
+
+  if (!isDriver) {
+    updateData.carId = null;
+    updateData.seatIndex = null;
+  }
+
+  await db
+    .update(participantState)
+    .set(updateData)
+    .where(eq(participantState.participantId, participantId));
+
+  return getEventData(sheetId);
+}
+
+/**
+ * Update participant seat capacity
+ * Only applicable for drivers
+ */
+export async function updateParticipantSeats(
+  participantId: string,
+  newSeats: number,
+  sheetId?: string,
+) {
+  if (newSeats < 0 || newSeats > 8) {
+    return getEventData(sheetId);
+  }
+
+  const participants = await syncFromSheet(sheetId);
+  const participant = participants.find((p) => p.id === participantId);
+
+  if (!participant || !participant.driver) {
+    return getEventData(sheetId);
+  }
+
+  await db
+    .update(participantState)
+    .set({ seats: newSeats, updatedAt: new Date() })
+    .where(eq(participantState.participantId, participantId));
+
+  // If reducing seats, may need to unassign some riders
+  const carId = `car-${participantId}`;
+  const assignedRiders = participants.filter(
+    (p) => !p.driver && p.carId === carId,
+  );
+
+  if (assignedRiders.length > newSeats) {
+    // Remove excess riders from end of seatAssignments
+    const ridersToRemove = assignedRiders.slice(newSeats);
+    for (const rider of ridersToRemove) {
+      await db
+        .update(participantState)
+        .set({ carId: null, seatIndex: null, updatedAt: new Date() })
+        .where(eq(participantState.participantId, rider.id));
+    }
+  }
+
+  return getEventData(sheetId);
+}
+
+/**
+ * Move a rider to a different car
+ */
+export async function moveRiderToCar(
+  riderId: string,
+  targetCarId: string,
+  sheetId?: string,
+) {
+  const participants = await syncFromSheet(sheetId);
+  const rider = participants.find((p) => p.id === riderId);
+  const targetDriver = participants.find(
+    (p) => p.driver && !p.selfDriver && `car-${p.id}` === targetCarId,
+  );
+
+  if (!rider || rider.driver || !targetDriver) {
+    return getEventData(sheetId);
+  }
+
+  // Find first available seat in target car
+  const assignedToTarget = participants.filter(
+    (p) => !p.driver && p.carId === targetCarId,
+  ).length;
+
+  if (assignedToTarget >= targetDriver.seats) {
+    return getEventData(sheetId);
+  }
+
+  // Find next available seat index
+  const occupied = new Set(
+    participants
+      .filter((p) => !p.driver && p.carId === targetCarId)
+      .map((p) => p.seatIndex),
+  );
+
+  let nextSeat = 0;
+  while (occupied.has(nextSeat) && nextSeat < targetDriver.seats) {
+    nextSeat++;
+  }
+
+  if (nextSeat >= targetDriver.seats) {
+    return getEventData(sheetId);
+  }
+
+  // Remove from previous car if assigned
+  const previousCarId = rider.carId;
+  const previousSeatIndex = rider.seatIndex;
+
+  await db
+    .update(participantState)
+    .set({
+      carId: targetCarId,
+      seatIndex: nextSeat,
+      updatedAt: new Date(),
+    })
+    .where(eq(participantState.participantId, riderId));
+
+  return getEventData(sheetId);
+}
+
+/**
+ * Update participant event status
+ */
+export async function updateParticipantStatus(
+  participantId: string,
+  newStatus: EventStatus,
+  sheetId?: string,
+) {
+  const validStatuses = [
+    "awaiting",
+    "text_sent",
+    "ambiguous",
+    "confirmed",
+    "cancelled",
+    "present",
+  ];
+
+  if (!validStatuses.includes(newStatus)) {
+    return getEventData(sheetId);
+  }
+
+  const participants = await syncFromSheet(sheetId);
+  const participant = participants.find((p) => p.id === participantId);
+
+  if (!participant) {
+    return getEventData(sheetId);
+  }
+
+  await db
+    .update(participantState)
+    .set({ status: newStatus, updatedAt: new Date() })
+    .where(eq(participantState.participantId, participantId));
+
+  return getEventData(sheetId);
+}

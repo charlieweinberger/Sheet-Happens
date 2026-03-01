@@ -13,6 +13,7 @@ import { DraggableRider } from "@/components/carpool/draggable-rider";
 import { UnassignedLane } from "@/components/carpool/unassigned-lane";
 import { WaitlistLane } from "@/components/carpool/waitlist-lane";
 import { SelfDriversLane } from "@/components/carpool/self-drivers-lane";
+import VoiceControl from "@/components/voice-control";
 import {
   FilterBar,
   type FilterOfficer,
@@ -362,6 +363,22 @@ export function OperationsStudio({
                 </Card>
 
                 <div className="space-y-5">
+                  <VoiceControl
+                    participants={data.participants}
+                    onCommandExecuted={() => {
+                      // Refresh data after voice command execution
+                      startTransition(async () => {
+                        const next = await fetchJson("/api/event-data", {
+                          method: "POST",
+                          body: JSON.stringify({ sheetId }),
+                        });
+                        setData(next);
+                      });
+                    }}
+                    onError={(error) => {
+                      console.error("Voice control error:", error);
+                    }}
+                  />
                   <Card>
                     <CardContent className="pt-4">
                       <div className="space-y-2">
@@ -425,7 +442,7 @@ export function OperationsStudio({
           </TabsContent>
 
           <TabsContent value="dashboard">
-            <DashboardSummary stats={data.stats} />
+            <DashboardSummary stats={data.stats} participants={data.participants} />
           </TabsContent>
         </Tabs>
 
