@@ -9,12 +9,13 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Search, User } from "lucide-react";
+import { Search } from "lucide-react";
 import { DashboardSummary } from "@/components/dashboard-summary";
 import { InsightPanel } from "@/components/insight-panel";
 import { ParticipantCard } from "@/components/participant-card";
 import { CarVisualization } from "@/components/car-visualization";
 import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
+import { OfficerIcon } from "@/components/officer-icon";
 import { getStatusCardClass, getStatusDarkTextColor, getStatusSelectClass, getStatusBorderColor, getStatusLightBgColor } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -377,9 +378,6 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                             Name
                           </th>
                           <th className="px-3 py-2 text-left font-semibold text-zinc-900">
-                            Email
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
                             Role
                           </th>
                           <th className="px-3 py-2 text-left font-semibold text-zinc-900">
@@ -399,11 +397,8 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                             <td className="px-3 py-2 text-zinc-900">
                               <div className="flex items-center gap-2">
                                 {participant.name}
-                                {participant.isOfficer && <User className="h-4 w-4" />}
+                                {participant.isOfficer && <OfficerIcon className="h-4 w-4" />}
                               </div>
-                            </td>
-                            <td className="px-3 py-2 text-zinc-600 text-xs">
-                              {participant.email}
                             </td>
                             <td className="px-3 py-2 text-zinc-600 text-xs">
                               {participant.selfDriver

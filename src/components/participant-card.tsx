@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StatusTimeline } from "@/components/status-timeline";
+import { Pencil } from "lucide-react";
 import type { EventStatus, Participant } from "@/types";
 
 export function ParticipantCard({
@@ -18,6 +19,7 @@ export function ParticipantCard({
   onSaveNotes: (id: string, notes: string) => void;
 }) {
   const [note, setNote] = useState(participant.appNotes);
+  const [showNoteInput, setShowNoteInput] = useState(false);
 
   return (
     <Card className="transition-all hover:shadow-md">
@@ -49,19 +51,63 @@ export function ParticipantCard({
             <span className="text-zinc-600">{participant.preferredRidePartners.join(", ")}</span>
           </div>
         )}
-        <div className="text-xs text-zinc-500">
-          Preferences: {participant.riderPreferences || "None"}
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-xs text-zinc-500">
+            <div className="font-semibold text-zinc-700">Extra Comments:</div>
+            {participant.extraComments ? (
+              <div className="mt-1 text-zinc-600">{participant.extraComments}</div>
+            ) : (
+              <div className="mt-1">None</div>
+            )}
+            {participant.appNotes && (
+              <div className="mt-1 text-zinc-600">
+                {participant.appNotes} <span className="italic text-zinc-400">(Added by officer)</span>
+              </div>
+            )}
+          </div>
+          {!showNoteInput && (
+            <button
+              onClick={() => {
+                setNote(participant.appNotes);
+                setShowNoteInput(true);
+              }}
+              className="rounded-full p-1 hover:bg-zinc-100 transition-colors"
+              aria-label="Edit officer note"
+            >
+              <Pencil className="h-4 w-4 text-zinc-500" />
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Internal notes"
-          />
-          <Button variant="secondary" size="sm" onClick={() => onSaveNotes(participant.id, note)}>
-            Save
-          </Button>
-        </div>
+        {showNoteInput && (
+          <div className="flex items-center gap-2">
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add officer note"
+              autoFocus
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                onSaveNotes(participant.id, note.trim());
+                setShowNoteInput(false);
+              }}
+            >
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setNote(participant.appNotes);
+                setShowNoteInput(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

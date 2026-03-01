@@ -10,7 +10,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: true,
     seats: 4,
     selfDriver: false,
-    riderPreferences: "prefers quiet ride",
+    extraComments: "prefers quiet ride",
     preferredRidePartners: ["Maya Patel", "Jordan Lee"],
   },
   {
@@ -22,7 +22,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: false,
     seats: 0,
     selfDriver: false,
-    riderPreferences: "likes music",
+    extraComments: "likes music",
     preferredRidePartners: ["Alex Nguyen"],
   },
   {
@@ -34,7 +34,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: false,
     seats: 0,
     selfDriver: false,
-    riderPreferences: "can leave early",
+    extraComments: "can leave early",
     preferredRidePartners: ["Alex Nguyen", "Maya Patel"],
   },
   {
@@ -46,7 +46,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: true,
     seats: 3,
     selfDriver: false,
-    riderPreferences: "likes music",
+    extraComments: "likes music",
     preferredRidePartners: [],
   },
   {
@@ -58,7 +58,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: false,
     seats: 0,
     selfDriver: false,
-    riderPreferences: "prefers quiet ride",
+    extraComments: "prefers quiet ride",
     preferredRidePartners: ["Hannah Kim"],
   },
   {
@@ -70,7 +70,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: false,
     seats: 0,
     selfDriver: false,
-    riderPreferences: "likes music",
+    extraComments: "likes music",
     preferredRidePartners: ["Diego Ramos"],
   },
   {
@@ -82,7 +82,7 @@ export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "
     driver: true,
     seats: 0,
     selfDriver: true,
-    riderPreferences: "",
+    extraComments: "",
     preferredRidePartners: [],
   },
 ];

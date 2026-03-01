@@ -69,7 +69,7 @@ export function optimizeCarpoolAssignments(
       const driver = drivers.find((d) => d.id === car.driverId);
       if (!driver) continue;
 
-      let score = similarity(rider.riderPreferences, driver.riderPreferences);
+      let score = similarity(rider.extraComments, driver.extraComments);
 
       // Boost score if driver is in rider's preferred partners list
       if (rider.preferredRidePartners && rider.preferredRidePartners.includes(driver.name)) {

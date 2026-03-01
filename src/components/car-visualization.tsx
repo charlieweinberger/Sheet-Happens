@@ -4,9 +4,9 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
+import { OfficerIcon } from "@/components/officer-icon";
 import { getStatusBorderColor, getStatusLightBgColor, getStatusDarkTextColor } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
-import { User } from "lucide-react";
 import type { Car, Participant } from "@/types";
 
 interface SeatProps {
@@ -43,7 +43,7 @@ function DraggableOccupant({ occupant }: { occupant: Participant }) {
     >
       <span className={cn("text-center text-xs font-bold flex items-center gap-1", getStatusDarkTextColor(occupant.status))}>
         {occupant.name}
-        {occupant.isOfficer && <User className="h-3 w-3" />}
+        {occupant.isOfficer && <OfficerIcon className="h-3 w-3" />}
         <PreferredPartnersTooltip participant={occupant} />
       </span>
     </button>
@@ -73,7 +73,7 @@ function Seat({ seatId, seatLabel, occupant, isDriver }: SeatProps) {
           <>
             <span className={cn("text-xs font-bold flex items-center justify-center gap-1", getStatusDarkTextColor(occupant.status))}>
               {occupant.name}
-              {occupant.isOfficer && <User className="h-3 w-3" />}
+              {occupant.isOfficer && <OfficerIcon className="h-3 w-3" />}
               <PreferredPartnersTooltip participant={occupant} />
             </span>
             <span className={cn("text-center text-[10px]", getStatusDarkTextColor(occupant.status))}>

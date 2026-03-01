@@ -11,7 +11,7 @@ type SheetRow = {
   driver?: string;
   seats?: string;
   selfDriver?: string;
-  riderPreferences?: string;
+  extraComments?: string;
   notes?: string;
   preferredRidePartners?: string;
 };
@@ -40,7 +40,7 @@ function rowToParticipant(row: SheetRow, idx: number) {
     driver: isDriver && !isSelfDriver,
     seats: (isDriver && !isSelfDriver) ? (Number(row.seats || 0) || 0) : 0,
     selfDriver: isSelfDriver,
-    riderPreferences: row.riderPreferences?.trim() || "",
+    extraComments: row.extraComments?.trim() || "",
     preferredRidePartners: preferredRidePartners || [],
   } satisfies Omit<
     Participant,
@@ -104,7 +104,7 @@ export async function fetchSheetParticipants() {
       timestamp: row.timestamp,
       driver: row.driver,
       seats: row.seats,
-      riderPreferences: row.riderPreferences,
+      extraComments: row.extraComments,
       notes: row.notes,
       preferredRidePartners: row.preferredRidePartners,
     } satisfies SheetRow;
