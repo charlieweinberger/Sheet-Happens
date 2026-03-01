@@ -90,13 +90,11 @@ async function fetchJson(path: string, init?: RequestInit) {
 export function OperationsStudio({ initialData }: { initialData: EventData }) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterOfficer, setFilterOfficer] = useState<"all" | "officer" | "not-officer">("all");
   const [filterRole, setFilterRole] = useState<
-    "all" | "officer" | "driver" | "self-driver" | "rider"
+    "all" | "driver" | "self-driver" | "rider"
   >("all");
   const [filterStatus, setFilterStatus] = useState<"all" | EventStatus>("all");
-  const [filterTextSent, setFilterTextSent] = useState<
-    "all" | "sent" | "not-sent"
-  >("all");
   const [sortBy, setSortBy] = useState<"name" | "status">("name");
   const [viewMode, setViewMode] = useState<"list" | "table">("list");
   const [isPending, startTransition] = useTransition();
@@ -117,10 +115,15 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
       );
     }
 
-    // Role filter
-    if (filterRole === "officer") {
+    // Officer filter
+    if (filterOfficer === "officer") {
       result = result.filter((p) => p.isOfficer);
-    } else if (filterRole === "driver") {
+    } else if (filterOfficer === "not-officer") {
+      result = result.filter((p) => !p.isOfficer);
+    }
+
+    // Role filter
+    if (filterRole === "driver") {
       result = result.filter((p) => p.driver && !p.selfDriver);
     } else if (filterRole === "self-driver") {
       result = result.filter((p) => p.selfDriver);
@@ -131,20 +134,6 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
     // Status filter
     if (filterStatus !== "all") {
       result = result.filter((p) => p.status === filterStatus);
-    }
-
-    // Text sent filter
-    if (filterTextSent === "sent") {
-      result = result.filter(
-        (p) =>
-          p.status === "text_sent" ||
-          p.status === "ambiguous" ||
-          p.status === "confirmed" ||
-          p.status === "cancelled" ||
-          p.status === "present",
-      );
-    } else if (filterTextSent === "not-sent") {
-      result = result.filter((p) => p.status === "awaiting");
     }
 
     // Sort
@@ -168,9 +157,9 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
   }, [
     data.participants,
     searchTerm,
+    filterOfficer,
     filterRole,
     filterStatus,
-    filterTextSent,
     sortBy,
   ]);
 
@@ -291,13 +280,23 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                   <div className="flex flex-wrap gap-2">
                     <select
                       className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
+                      value={filterOfficer}
+                      onChange={(e) =>
+                        setFilterOfficer(e.target.value as typeof filterOfficer)
+                      }
+                    >
+                      <option value="all">All Members</option>
+                      <option value="officer">Officers</option>
+                      <option value="not-officer">Not Officers</option>
+                    </select>
+                    <select
+                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
                       value={filterRole}
                       onChange={(e) =>
                         setFilterRole(e.target.value as typeof filterRole)
                       }
                     >
                       <option value="all">All Roles</option>
-                      <option value="officer">Officers</option>
                       <option value="driver">Drivers</option>
                       <option value="self-driver">Self-Drivers</option>
                       <option value="rider">Riders</option>
@@ -319,19 +318,6 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                     </select>
                     <select
                       className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
-                      value={filterTextSent}
-                      onChange={(e) =>
-                        setFilterTextSent(
-                          e.target.value as typeof filterTextSent,
-                        )
-                      }
-                    >
-                      <option value="all">Text Status</option>
-                      <option value="sent">Text Sent</option>
-                      <option value="not-sent">Text Not Sent</option>
-                    </select>
-                    <select
-                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
                       value={sortBy}
                       onChange={(e) =>
                         setSortBy(e.target.value as typeof sortBy)
@@ -345,9 +331,9 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                       size="sm"
                       onClick={() => {
                         setSearchTerm("");
+                        setFilterOfficer("all");
                         setFilterRole("all");
                         setFilterStatus("all");
-                        setFilterTextSent("all");
                       }}
                     >
                       Reset Filters
