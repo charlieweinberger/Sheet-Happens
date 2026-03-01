@@ -31,12 +31,17 @@ export function CarCard({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{car.driverName}</span>
-          <Badge variant={car.seatsUsed >= car.seatsTotal ? "warning" : "success"}>
+          <Badge
+            variant={car.seatsUsed >= car.seatsTotal ? "warning" : "success"}
+          >
             {car.seatsUsed}/{car.seatsTotal}
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">{children || riders.map((rider) => <div key={rider.id}>{rider.name}</div>)}</CardContent>
+      <CardContent className="space-y-2">
+        {children ||
+          riders.map((rider) => <div key={rider.id}>{rider.name}</div>)}
+      </CardContent>
     </Card>
   );
 }

@@ -2,7 +2,8 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import path from "node:path";
 
-const dbPath = process.env.DATABASE_URL?.replace("file:", "") ?? "./db/event-ops.db";
+const dbPath =
+  process.env.DATABASE_URL?.replace("file:", "") ?? "./db/event-ops.db";
 const absoluteDbPath = path.isAbsolute(dbPath)
   ? dbPath
   : path.join(process.cwd(), dbPath);

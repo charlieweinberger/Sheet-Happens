@@ -1,102 +1,39 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
+import { DashboardSummary } from "@/components/dashboard/dashboard-summary";
+import { InsightPanel } from "@/components/dashboard/insight-panel";
+import { ParticipantList } from "@/components/participants/participant-list";
+import { ParticipantTable } from "@/components/participants/participant-table";
+import { CarVisualization } from "@/components/carpool/car-visualization";
+import { DraggableRider } from "@/components/carpool/draggable-rider";
+import { UnassignedLane } from "@/components/carpool/unassigned-lane";
+import { SelfDriversLane } from "@/components/carpool/self-drivers-lane";
 import {
-  DndContext,
-  DragEndEvent,
-  closestCenter,
-  useDraggable,
-  useDroppable,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import { Search } from "lucide-react";
-import { DashboardSummary } from "@/components/dashboard-summary";
-import { InsightPanel } from "@/components/insight-panel";
-import { ParticipantCard } from "@/components/participant-card";
-import { CarVisualization } from "@/components/car-visualization";
-import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
-import { OfficerIcon } from "@/components/officer-icon";
-import { getStatusCardClass, getStatusDarkTextColor, getStatusSelectClass, getStatusBorderColor, getStatusLightBgColor } from "@/lib/statusColors";
-import { cn } from "@/lib/utils";
+  FilterBar,
+  type FilterOfficer,
+  type FilterRole,
+  type FilterStatus,
+  type SortBy,
+} from "@/components/shared/filter-bar";
+import { useFilteredParticipants } from "@/hooks/useFilteredParticipants";
+import { fetchJson } from "@/lib/apiClient";
+import {
+  getParticipantsByRole,
+  getUnassignedRiders,
+} from "@/lib/participantHelpers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import type { Car, EventData, EventStatus, Participant } from "@/types";
-
-function DraggableRider({ participant }: { participant: Participant }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: participant.id,
-    });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <button
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "w-full rounded-md border-2 p-2 text-left text-sm flex items-center justify-between gap-2",
-        getStatusBorderColor(participant.status),
-        getStatusLightBgColor(participant.status),
-      )}
-      {...listeners}
-      {...attributes}
-      type="button"
-    >
-      <span className={getStatusDarkTextColor(participant.status)}>{participant.name}</span>
-      <PreferredPartnersTooltip participant={participant} />
-    </button>
-  );
-}
-
-function UnassignedLane({ children }: { children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: "unassigned" });
-
-  return (
-    <Card
-      ref={setNodeRef}
-      className={[
-        "min-h-40 border-2 transition-colors",
-        isOver ? "border-zinc-900" : "border-zinc-200",
-      ].join(" ")}
-    >
-      <CardHeader>
-        <CardTitle>Unassigned Riders</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">{children}</CardContent>
-    </Card>
-  );
-}
-
-async function fetchJson(path: string, init?: RequestInit) {
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-
-  return (await response.json()) as EventData;
-}
+import type { Car, EventData } from "@/types";
 
 export function OperationsStudio({ initialData }: { initialData: EventData }) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterOfficer, setFilterOfficer] = useState<"all" | "officer" | "not-officer">("all");
-  const [filterRole, setFilterRole] = useState<
-    "all" | "driver" | "self-driver" | "rider"
-  >("all");
-  const [filterStatus, setFilterStatus] = useState<"all" | EventStatus>("all");
-  const [sortBy, setSortBy] = useState<"name" | "status">("name");
+  const [filterOfficer, setFilterOfficer] = useState<FilterOfficer>("all");
+  const [filterRole, setFilterRole] = useState<FilterRole>("all");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("name");
   const [viewMode, setViewMode] = useState<"list" | "table">("list");
   const [isPending, startTransition] = useTransition();
 
@@ -105,82 +42,29 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
     [data.participants],
   );
 
-  const filteredParticipants = useMemo(() => {
-    let result = data.participants;
-
-    // Search filter
-    const term = searchTerm.toLowerCase().trim();
-    if (term) {
-      result = result.filter((participant) =>
-        `${participant.name} ${participant.email}`.toLowerCase().includes(term),
-      );
-    }
-
-    // Officer filter
-    if (filterOfficer === "officer") {
-      result = result.filter((p) => p.isOfficer);
-    } else if (filterOfficer === "not-officer") {
-      result = result.filter((p) => !p.isOfficer);
-    }
-
-    // Role filter
-    if (filterRole === "driver") {
-      result = result.filter((p) => p.driver && !p.selfDriver);
-    } else if (filterRole === "self-driver") {
-      result = result.filter((p) => p.selfDriver);
-    } else if (filterRole === "rider") {
-      result = result.filter((p) => !p.driver && !p.selfDriver);
-    }
-
-    // Status filter
-    if (filterStatus !== "all") {
-      result = result.filter((p) => p.status === filterStatus);
-    }
-
-    // Sort
-    if (sortBy === "name") {
-      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === "status") {
-      const statusOrder: Record<EventStatus, number> = {
-        awaiting: 0,
-        text_sent: 1,
-        ambiguous: 2,
-        confirmed: 3,
-        present: 4,
-        cancelled: 5,
-      };
-      result = [...result].sort(
-        (a, b) => statusOrder[a.status] - statusOrder[b.status],
-      );
-    }
-
-    return result;
-  }, [
+  const filteredParticipants = useFilteredParticipants(
     data.participants,
     searchTerm,
     filterOfficer,
     filterRole,
     filterStatus,
     sortBy,
-  ]);
+  );
 
-  const riders = data.participants.filter(
-    (p) => !p.driver && !p.selfDriver && p.status !== "cancelled",
-  );
-  const selfDrivers = data.participants.filter(
-    (p) => p.selfDriver && p.status !== "cancelled",
-  );
-  const driversById = useMemo(
-    () =>
-      new Map(data.participants.filter((p) => p.driver && !p.selfDriver).map((d) => [d.id, d])),
+  const { riders, selfDrivers, drivers } = useMemo(
+    () => getParticipantsByRole(data.participants),
     [data.participants],
   );
-  const unassigned = riders.filter((r) => {
-    if (!r.carId) return true;
-    const driverId = r.carId.replace("car-", "");
-    const driver = driversById.get(driverId);
-    return !driver || driver.status === "cancelled";
-  });
+
+  const driversById = useMemo(
+    () => new Map(drivers.map((d) => [d.id, d])),
+    [drivers],
+  );
+
+  const unassigned = useMemo(
+    () => getUnassignedRiders(riders, driversById),
+    [riders, driversById],
+  );
 
   function mutate(path: string, init: RequestInit) {
     startTransition(async () => {
@@ -195,6 +79,13 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
       body: JSON.stringify(payload),
     });
   }
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setFilterOfficer("all");
+    setFilterRole("all");
+    setFilterStatus("all");
+  };
 
   function onDragEnd(event: DragEndEvent) {
     const riderId = String(event.active.id);
@@ -277,202 +168,34 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="mb-3 space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
-                      value={filterOfficer}
-                      onChange={(e) =>
-                        setFilterOfficer(e.target.value as typeof filterOfficer)
-                      }
-                    >
-                      <option value="all">All Members</option>
-                      <option value="officer">Officers</option>
-                      <option value="not-officer">Not Officers</option>
-                    </select>
-                    <select
-                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
-                      value={filterRole}
-                      onChange={(e) =>
-                        setFilterRole(e.target.value as typeof filterRole)
-                      }
-                    >
-                      <option value="all">All Roles</option>
-                      <option value="driver">Drivers</option>
-                      <option value="self-driver">Self-Drivers</option>
-                      <option value="rider">Riders</option>
-                    </select>
-                    <select
-                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
-                      value={filterStatus}
-                      onChange={(e) =>
-                        setFilterStatus(e.target.value as typeof filterStatus)
-                      }
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="awaiting">Awaiting</option>
-                      <option value="text_sent">Text Sent</option>
-                      <option value="ambiguous">Ambiguous</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="cancelled">Cancelled</option>
-                      <option value="present">Present</option>
-                    </select>
-                    <select
-                      className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm"
-                      value={sortBy}
-                      onChange={(e) =>
-                        setSortBy(e.target.value as typeof sortBy)
-                      }
-                    >
-                      <option value="name">Sort: Name</option>
-                      <option value="status">Sort: Status</option>
-                    </select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSearchTerm("");
-                        setFilterOfficer("all");
-                        setFilterRole("all");
-                        setFilterStatus("all");
-                      }}
-                    >
-                      Reset Filters
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-zinc-400" />
-                    <Input
-                      className="pl-8"
-                      placeholder="Search by name or email"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
+                <FilterBar
+                  searchTerm={searchTerm}
+                  filterOfficer={filterOfficer}
+                  filterRole={filterRole}
+                  filterStatus={filterStatus}
+                  sortBy={sortBy}
+                  onSearchChange={setSearchTerm}
+                  onFilterOfficerChange={setFilterOfficer}
+                  onFilterRoleChange={setFilterRole}
+                  onFilterStatusChange={setFilterStatus}
+                  onSortByChange={setSortBy}
+                  onReset={handleResetFilters}
+                />
                 {viewMode === "list" ? (
-                  <div className="grid gap-3">
-                    {filteredParticipants.map((participant) => (
-                      <div
-                        key={participant.id}
-                        className={getStatusCardClass(participant.status)}
-                      >
-                        <ParticipantCard
-                          participant={participant}
-                          onStatusChange={(id, status: EventStatus) =>
-                            updateParticipant(id, { status })
-                          }
-                          onSaveNotes={(id, appNotes) =>
-                            updateParticipant(id, { appNotes })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <ParticipantList
+                    participants={filteredParticipants}
+                    onStatusChange={(id, status) =>
+                      updateParticipant(id, { status })
+                    }
+                    onSaveNotes={(id, appNotes) =>
+                      updateParticipant(id, { appNotes })
+                    }
+                  />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-zinc-200">
-                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
-                            Name
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
-                            Role
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
-                            Preferred Partners
-                          </th>
-                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredParticipants.map((participant) => (
-                          <tr
-                            key={participant.id}
-                            className="border-b border-zinc-100 hover:bg-zinc-50"
-                          >
-                            <td className="px-3 py-2 text-zinc-900">
-                              <div className="flex items-center gap-2">
-                                {participant.name}
-                                {participant.isOfficer && <OfficerIcon className="h-4 w-4" />}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-zinc-600 text-xs">
-                              {participant.selfDriver
-                                ? "Self-Driver"
-                                : participant.driver
-                                  ? `Driver (${participant.seats} seat${participant.seats > 1 ? "s" : ""})`
-                                  : "Rider"}
-                            </td>
-                            <td className="px-3 py-2 text-zinc-600 text-xs">
-                              {participant.preferredRidePartners?.length ? participant.preferredRidePartners.join(", ") : "-"}
-                            </td>
-                            <td className="px-3 py-2">
-                              <select
-                                className={getStatusSelectClass(participant.status)}
-                                value={`${participant.status}|${participant.checkInState}`}
-                                onChange={(e) => {
-                                  const [status, checkInState] =
-                                    e.target.value.split("|");
-                                  const updatedPayload: {
-                                    status: EventStatus;
-                                    checkInState: Participant["checkInState"];
-                                    carId?: null;
-                                    seatIndex?: null;
-                                  } = {
-                                    status: status as EventStatus,
-                                    checkInState:
-                                      checkInState === "null"
-                                        ? null
-                                        : (checkInState as Participant["checkInState"]),
-                                  };
-
-                                  // Clear carpool assignment when cancelled
-                                  if (status === "cancelled") {
-                                    updatedPayload.carId = null;
-                                    updatedPayload.seatIndex = null;
-                                  }
-
-                                  updateParticipant(
-                                    participant.id,
-                                    updatedPayload,
-                                  );
-                                }}
-                              >
-                                <optgroup label="Signed Up">
-                                  <option value="awaiting|null">
-                                    Signed Up
-                                  </option>
-                                </optgroup>
-                                <optgroup label="Text Sent">
-                                  <option value="text_sent|null">
-                                    Text Sent
-                                  </option>
-                                </optgroup>
-                                <optgroup label="Response">
-                                  <option value="confirmed|null">
-                                    Confirmed
-                                  </option>
-                                  <option value="ambiguous|null">
-                                    Ambiguous Response
-                                  </option>
-                                  <option value="cancelled|null">
-                                    Cancelled
-                                  </option>
-                                </optgroup>
-                                <optgroup label="Present">
-                                  <option value="present|null">Present</option>
-                                </optgroup>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ParticipantTable
+                    participants={filteredParticipants}
+                    onStatusChange={updateParticipant}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -512,26 +235,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                       </UnassignedLane>
                     </div>
                     <div className="flex-1">
-                      <Card className="min-h-40 border-2 border-zinc-200">
-                        <CardHeader>
-                          <CardTitle>Self-Drivers</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {selfDrivers.map((participant) => (
-                            <div
-                              key={participant.id}
-                              className={cn(
-                                "w-full rounded-md border-2 p-2 text-left text-sm flex items-center justify-between gap-2",
-                                getStatusBorderColor(participant.status),
-                                getStatusLightBgColor(participant.status),
-                              )}
-                            >
-                              <span className={getStatusDarkTextColor(participant.status)}>{participant.name}</span>
-                              <PreferredPartnersTooltip participant={participant} />
-                            </div>
-                          ))}
-                        </CardContent>
-                      </Card>
+                      <SelfDriversLane selfDrivers={selfDrivers} />
                     </div>
                   </div>
                   {data.cars.map((car: Car) => (

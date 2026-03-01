@@ -1,94 +1,78 @@
 import type { EventStatus } from "@/types";
 
-export function getStatusColor(status: EventStatus): string {
-  switch (status) {
-    case "awaiting":
-      return "bg-zinc-900";
-    case "text_sent":
-      return "bg-purple-600";
-    case "confirmed":
-      return "bg-green-600";
-    case "ambiguous":
-      return "bg-yellow-500";
-    case "cancelled":
-      return "bg-red-600";
-    case "present":
-      return "bg-blue-600";
-    default:
-      return "bg-zinc-200";
+// Status color configuration map
+const statusColorMap: Record<
+  EventStatus,
+  {
+    bg: string;
+    border: string;
+    lightBg: string;
+    text: string;
+    darkText: string;
   }
+> = {
+  awaiting: {
+    bg: "bg-zinc-900",
+    border: "border-zinc-900",
+    lightBg: "bg-zinc-100",
+    text: "text-white",
+    darkText: "text-zinc-900",
+  },
+  text_sent: {
+    bg: "bg-purple-600",
+    border: "border-purple-600",
+    lightBg: "bg-purple-50",
+    text: "text-white",
+    darkText: "text-purple-900",
+  },
+  confirmed: {
+    bg: "bg-green-600",
+    border: "border-green-600",
+    lightBg: "bg-green-50",
+    text: "text-white",
+    darkText: "text-green-900",
+  },
+  ambiguous: {
+    bg: "bg-yellow-500",
+    border: "border-yellow-500",
+    lightBg: "bg-yellow-50",
+    text: "text-white",
+    darkText: "text-yellow-900",
+  },
+  cancelled: {
+    bg: "bg-red-600",
+    border: "border-red-600",
+    lightBg: "bg-red-50",
+    text: "text-white",
+    darkText: "text-red-900",
+  },
+  present: {
+    bg: "bg-blue-600",
+    border: "border-blue-600",
+    lightBg: "bg-blue-50",
+    text: "text-white",
+    darkText: "text-blue-900",
+  },
+};
+
+export function getStatusColor(status: EventStatus): string {
+  return statusColorMap[status]?.bg ?? "bg-zinc-200";
 }
 
 export function getStatusBorderColor(status: EventStatus): string {
-  switch (status) {
-    case "awaiting":
-      return "border-zinc-900";
-    case "text_sent":
-      return "border-purple-600";
-    case "confirmed":
-      return "border-green-600";
-    case "ambiguous":
-      return "border-yellow-500";
-    case "cancelled":
-      return "border-red-600";
-    case "present":
-      return "border-blue-600";
-    default:
-      return "border-zinc-200";
-  }
+  return statusColorMap[status]?.border ?? "border-zinc-200";
 }
 
 export function getStatusLightBgColor(status: EventStatus): string {
-  switch (status) {
-    case "awaiting":
-      return "bg-zinc-100";
-    case "text_sent":
-      return "bg-purple-50";
-    case "confirmed":
-      return "bg-green-50";
-    case "ambiguous":
-      return "bg-yellow-50";
-    case "cancelled":
-      return "bg-red-50";
-    case "present":
-      return "bg-blue-50";
-    default:
-      return "bg-zinc-50";
-  }
+  return statusColorMap[status]?.lightBg ?? "bg-zinc-50";
 }
 
 export function getStatusTextColor(status: EventStatus): string {
-  switch (status) {
-    case "awaiting":
-    case "text_sent":
-    case "confirmed":
-    case "cancelled":
-    case "present":
-      return "text-white";
-    case "ambiguous":
-      return "text-white";
-    default:
-      return "text-zinc-900";
-  }
+  return statusColorMap[status]?.text ?? "text-zinc-900";
 }
 
 export function getStatusDarkTextColor(status: EventStatus): string {
-  switch (status) {
-    case "awaiting":
-      return "text-zinc-900";
-    case "text_sent":
-      return "text-purple-900";
-    case "confirmed":
-      return "text-green-900";
-    case "ambiguous":
-      return "text-yellow-900";
-    case "cancelled":
-      return "text-red-900";
-    case "present":
-      return "text-blue-900";
-    default:
-      return "text-zinc-900";
-  }
+  return statusColorMap[status]?.darkText ?? "text-zinc-900";
 }
 
 export function getStatusCardClass(status: EventStatus): string {
@@ -101,29 +85,30 @@ export function getStatusSelectClass(status: EventStatus): string {
   const bgColor = getStatusLightBgColor(status);
   const borderColor = getStatusBorderColor(status);
   const textColor = getStatusDarkTextColor(status);
-  
+
   return `rounded px-2 py-1 text-xs border-2 font-semibold ${borderColor} ${bgColor} ${textColor}`;
 }
 
-export function getStatusButtonClass(status: EventStatus, isActive: boolean): string {
+export function getStatusButtonClass(
+  status: EventStatus,
+  isActive: boolean,
+): string {
   if (!isActive) {
     return "bg-zinc-200 text-zinc-700 hover:bg-zinc-300";
   }
-  
-  switch (status) {
-    case "awaiting":
-      return "bg-zinc-900 text-white";
-    case "text_sent":
-      return "bg-purple-600 text-white ring-1 ring-purple-400";
-    case "confirmed":
-      return "bg-green-600 text-white ring-1 ring-green-400";
-    case "ambiguous":
-      return "bg-yellow-500 text-white ring-1 ring-yellow-400";
-    case "cancelled":
-      return "bg-red-600 text-white ring-1 ring-red-400";
-    case "present":
-      return "bg-blue-600 text-white ring-1 ring-blue-400 hover:bg-blue-700";
-    default:
-      return "bg-zinc-200 text-zinc-700 hover:bg-zinc-300";
-  }
+
+  const ringColor: Record<EventStatus, string> = {
+    awaiting: "",
+    text_sent: "ring-1 ring-purple-400",
+    confirmed: "ring-1 ring-green-400",
+    ambiguous: "ring-1 ring-yellow-400",
+    cancelled: "ring-1 ring-red-400",
+    present: "ring-1 ring-blue-400 hover:bg-blue-700",
+  };
+
+  const bgColor = getStatusColor(status);
+  const textColor = getStatusTextColor(status);
+  const ring = ringColor[status] || "";
+
+  return `${bgColor} ${textColor} ${ring}`;
 }

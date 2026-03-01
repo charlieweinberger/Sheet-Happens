@@ -4,7 +4,9 @@ export const participantState = sqliteTable("participant_state", {
   participantId: text("participant_id").primaryKey(),
   email: text("email").notNull(),
   status: text("status").notNull().default("awaiting"),
-  isOfficer: integer("is_officer", { mode: "boolean" }).notNull().default(false),
+  isOfficer: integer("is_officer", { mode: "boolean" })
+    .notNull()
+    .default(false),
   appNotes: text("app_notes").notNull().default(""),
   carId: text("car_id"),
   seatIndex: integer("seat_index"),

@@ -2,8 +2,14 @@ import { Info } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Participant } from "@/types";
 
-export function PreferredPartnersTooltip({ participant }: { participant: Participant }) {
-  const hasPreferences = participant.preferredRidePartners && participant.preferredRidePartners.length > 0;
+export function PreferredPartnersTooltip({
+  participant,
+}: {
+  participant: Participant;
+}) {
+  const hasPreferences =
+    participant.preferredRidePartners &&
+    participant.preferredRidePartners.length > 0;
 
   if (!hasPreferences) {
     return null;

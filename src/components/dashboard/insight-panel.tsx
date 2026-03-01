@@ -40,7 +40,9 @@ export function InsightPanel({ insights }: { insights: Insight[] }) {
               </div>
               <p className="text-sm text-zinc-700">{insight.description}</p>
               {insight.suggestion ? (
-                <p className="mt-2 text-xs text-zinc-500">Suggestion: {insight.suggestion}</p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Suggestion: {insight.suggestion}
+                </p>
               ) : null}
             </div>
           );

@@ -5,7 +5,12 @@ import { fetchSheetParticipants } from "@/lib/googleSheets";
 import { generateMockInsights } from "@/lib/aiInsights";
 import { optimizeCarpoolAssignments } from "@/lib/carpoolOptimizer";
 import { isOfficerEmail } from "@/lib/config";
-import type { DashboardStats, EventData, EventStatus, Participant } from "@/types";
+import type {
+  DashboardStats,
+  EventData,
+  EventStatus,
+  Participant,
+} from "@/types";
 
 function toParticipant(
   sheet: Awaited<ReturnType<typeof fetchSheetParticipants>>[number],
@@ -34,14 +39,22 @@ function toParticipant(
 
 function normalizeSeatIndexes(participants: Participant[]) {
   const normalized = participants.map((participant) => ({ ...participant }));
-  const byId = new Map(normalized.map((participant) => [participant.id, participant]));
+  const byId = new Map(
+    normalized.map((participant) => [participant.id, participant]),
+  );
 
-  const drivers = normalized.filter((participant) => participant.driver && !participant.selfDriver && participant.seats > 0);
+  const drivers = normalized.filter(
+    (participant) =>
+      participant.driver && !participant.selfDriver && participant.seats > 0,
+  );
 
   for (const driver of drivers) {
     const carId = `car-${driver.id}`;
     const seatsTotal = driver.seats;
-    const seatOccupants: Array<string | null> = Array.from({ length: seatsTotal }, () => null);
+    const seatOccupants: Array<string | null> = Array.from(
+      { length: seatsTotal },
+      () => null,
+    );
 
     const ridersInCar = normalized.filter(
       (participant) => !participant.driver && participant.carId === carId,
@@ -49,10 +62,10 @@ function normalizeSeatIndexes(participants: Participant[]) {
 
     for (const rider of ridersInCar) {
       if (
-        rider.seatIndex !== null
-        && rider.seatIndex >= 0
-        && rider.seatIndex < seatsTotal
-        && seatOccupants[rider.seatIndex] === null
+        rider.seatIndex !== null &&
+        rider.seatIndex >= 0 &&
+        rider.seatIndex < seatsTotal &&
+        seatOccupants[rider.seatIndex] === null
       ) {
         seatOccupants[rider.seatIndex] = rider.id;
       }
@@ -77,7 +90,11 @@ function normalizeSeatIndexes(participants: Participant[]) {
       const rider = byId.get(riderId);
       if (!rider) continue;
       if (rider.carId !== carId) continue;
-      if (rider.seatIndex === null || rider.seatIndex < 0 || rider.seatIndex >= seatsTotal) {
+      if (
+        rider.seatIndex === null ||
+        rider.seatIndex < 0 ||
+        rider.seatIndex >= seatsTotal
+      ) {
         rider.seatIndex = seatOccupants.indexOf(riderId);
       }
     }
@@ -122,9 +139,15 @@ export async function syncFromSheet() {
 
 function buildCars(participants: Participant[]) {
   const driverCars = participants
-    .filter((p) => p.driver && !p.selfDriver && p.status !== "cancelled" && p.seats > 0)
+    .filter(
+      (p) =>
+        p.driver && !p.selfDriver && p.status !== "cancelled" && p.seats > 0,
+    )
     .map((driver) => {
-      const seatAssignments: Array<string | null> = Array.from({ length: driver.seats }, () => null);
+      const seatAssignments: Array<string | null> = Array.from(
+        { length: driver.seats },
+        () => null,
+      );
 
       const assignedRiders = participants.filter(
         (p) => !p.driver && p.carId === `car-${driver.id}`,
@@ -132,10 +155,10 @@ function buildCars(participants: Participant[]) {
 
       for (const rider of assignedRiders) {
         if (
-          rider.seatIndex !== null
-          && rider.seatIndex >= 0
-          && rider.seatIndex < seatAssignments.length
-          && !seatAssignments[rider.seatIndex]
+          rider.seatIndex !== null &&
+          rider.seatIndex >= 0 &&
+          rider.seatIndex < seatAssignments.length &&
+          !seatAssignments[rider.seatIndex]
         ) {
           seatAssignments[rider.seatIndex] = rider.id;
         }
@@ -150,7 +173,9 @@ function buildCars(participants: Participant[]) {
         }
       }
 
-      const riderIds = seatAssignments.filter((seat): seat is string => seat !== null);
+      const riderIds = seatAssignments.filter(
+        (seat): seat is string => seat !== null,
+      );
 
       return {
         id: `car-${driver.id}`,
@@ -170,8 +195,12 @@ function buildStats(participants: Participant[]): DashboardStats {
   const totalSignedUp = participants.length;
   const confirmed = participants.filter((p) => p.status === "confirmed").length;
   const cancelled = participants.filter((p) => p.status === "cancelled").length;
-  const awaitingResponse = participants.filter((p) => p.status === "awaiting").length;
-  const carsCreated = participants.filter((p) => p.driver && !p.selfDriver && p.seats > 0).length;
+  const awaitingResponse = participants.filter(
+    (p) => p.status === "awaiting",
+  ).length;
+  const carsCreated = participants.filter(
+    (p) => p.driver && !p.selfDriver && p.seats > 0,
+  ).length;
   const officersAttending = participants.filter(
     (p) => p.isOfficer && p.status !== "cancelled",
   ).length;
@@ -217,11 +246,18 @@ export async function updateParticipantState(
   };
 
   if (typeof updates.status !== "undefined") payload.status = updates.status;
-  if (typeof updates.isOfficer !== "undefined") payload.isOfficer = updates.isOfficer;
-  if (typeof updates.appNotes !== "undefined") payload.appNotes = updates.appNotes;
+  if (typeof updates.isOfficer !== "undefined")
+    payload.isOfficer = updates.isOfficer;
+  if (typeof updates.appNotes !== "undefined")
+    payload.appNotes = updates.appNotes;
   if (typeof updates.carId !== "undefined") payload.carId = updates.carId;
-  if (typeof updates.seatIndex !== "undefined") payload.seatIndex = updates.seatIndex;
-  if (typeof updates.carId !== "undefined" && updates.carId === null && typeof updates.seatIndex === "undefined") {
+  if (typeof updates.seatIndex !== "undefined")
+    payload.seatIndex = updates.seatIndex;
+  if (
+    typeof updates.carId !== "undefined" &&
+    updates.carId === null &&
+    typeof updates.seatIndex === "undefined"
+  ) {
     payload.seatIndex = null;
   }
   if (typeof updates.checkInState !== "undefined") {
@@ -235,12 +271,14 @@ export async function updateParticipantState(
 
   // If a driver is being uncancelled (from "cancelled" to something else), clear all passengers' seat assignments
   if (
-    currentParticipant?.status === "cancelled"
-    && typeof updates.status !== "undefined"
-    && updates.status !== "cancelled"
+    currentParticipant?.status === "cancelled" &&
+    typeof updates.status !== "undefined" &&
+    updates.status !== "cancelled"
   ) {
     const allParticipants = await syncFromSheet();
-    const currentDriver = allParticipants.find((p) => p.id === participantId && p.driver && !p.selfDriver);
+    const currentDriver = allParticipants.find(
+      (p) => p.id === participantId && p.driver && !p.selfDriver,
+    );
 
     if (currentDriver) {
       const carId = `car-${participantId}`;
@@ -254,7 +292,11 @@ export async function updateParticipantState(
   return getEventData();
 }
 
-export async function assignRiderToCar(riderId: string, carId: string | null, seatIndex: number | null) {
+export async function assignRiderToCar(
+  riderId: string,
+  carId: string | null,
+  seatIndex: number | null,
+) {
   const participants = await syncFromSheet();
   const rider = participants.find((p) => p.id === riderId);
 
@@ -271,7 +313,9 @@ export async function assignRiderToCar(riderId: string, carId: string | null, se
     return getEventData();
   }
 
-  const targetDriver = participants.find((p) => p.driver && !p.selfDriver && `car-${p.id}` === carId);
+  const targetDriver = participants.find(
+    (p) => p.driver && !p.selfDriver && `car-${p.id}` === carId,
+  );
   if (!targetDriver || seatIndex < 0 || seatIndex >= targetDriver.seats) {
     return getEventData();
   }
@@ -281,7 +325,11 @@ export async function assignRiderToCar(riderId: string, carId: string | null, se
   }
 
   const occupant = participants.find(
-    (p) => !p.driver && p.id !== riderId && p.carId === carId && p.seatIndex === seatIndex,
+    (p) =>
+      !p.driver &&
+      p.id !== riderId &&
+      p.carId === carId &&
+      p.seatIndex === seatIndex,
   );
 
   const riderPreviousCarId = rider.carId;
@@ -294,15 +342,19 @@ export async function assignRiderToCar(riderId: string, carId: string | null, se
 
   if (occupant) {
     const canSwapToPreviousSeat =
-      riderPreviousCarId !== null
-      && riderPreviousSeatIndex !== null
-      && riderPreviousSeatIndex >= 0;
+      riderPreviousCarId !== null &&
+      riderPreviousSeatIndex !== null &&
+      riderPreviousSeatIndex >= 0;
 
     await db
       .update(participantState)
       .set(
         canSwapToPreviousSeat
-          ? { carId: riderPreviousCarId, seatIndex: riderPreviousSeatIndex, updatedAt: new Date() }
+          ? {
+              carId: riderPreviousCarId,
+              seatIndex: riderPreviousSeatIndex,
+              updatedAt: new Date(),
+            }
           : { carId: null, seatIndex: null, updatedAt: new Date() },
       )
       .where(eq(participantState.participantId, occupant.id));
@@ -315,7 +367,9 @@ export async function autoAssignCars(prioritizeOfficers: boolean) {
   const participants = await syncFromSheet();
   const result = optimizeCarpoolAssignments(participants, prioritizeOfficers);
 
-  const riderIds = participants.filter((p) => !p.driver && !p.selfDriver).map((p) => p.id);
+  const riderIds = participants
+    .filter((p) => !p.driver && !p.selfDriver)
+    .map((p) => p.id);
 
   if (riderIds.length > 0) {
     await db

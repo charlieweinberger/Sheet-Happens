@@ -30,7 +30,9 @@ export function optimizeCarpoolAssignments(
 ) {
   const eligible = participants.filter((p) => p.status !== "cancelled");
 
-  const drivers = eligible.filter((p) => p.driver && !p.selfDriver && p.seats > 0);
+  const drivers = eligible.filter(
+    (p) => p.driver && !p.selfDriver && p.seats > 0,
+  );
   const riders = eligible.filter((p) => !p.driver && !p.selfDriver);
 
   const cars: Car[] = drivers.map((driver) => ({
@@ -72,18 +74,24 @@ export function optimizeCarpoolAssignments(
       let score = similarity(rider.extraComments, driver.extraComments);
 
       // Boost score if driver is in rider's preferred partners list
-      if (rider.preferredRidePartners && rider.preferredRidePartners.includes(driver.name)) {
+      if (
+        rider.preferredRidePartners &&
+        rider.preferredRidePartners.includes(driver.name)
+      ) {
         score += 5.0;
       }
 
       // Boost score if any preferred partners are already in this car
-      if (rider.preferredRidePartners && rider.preferredRidePartners.length > 0) {
+      if (
+        rider.preferredRidePartners &&
+        rider.preferredRidePartners.length > 0
+      ) {
         const ridersInCar = car.riderIds
           .map((id) => participants.find((p) => p.id === id))
           .filter((p): p is Participant => p !== undefined);
-        
+
         const preferredPartnersInCar = ridersInCar.filter((p) =>
-          rider.preferredRidePartners.includes(p.name)
+          rider.preferredRidePartners.includes(p.name),
         ).length;
 
         // Give significant boost for each preferred partner in the car
@@ -91,7 +99,10 @@ export function optimizeCarpoolAssignments(
       }
 
       // Also check if the driver prefers this rider
-      if (driver.preferredRidePartners && driver.preferredRidePartners.includes(rider.name)) {
+      if (
+        driver.preferredRidePartners &&
+        driver.preferredRidePartners.includes(rider.name)
+      ) {
         score += 2.0;
       }
 

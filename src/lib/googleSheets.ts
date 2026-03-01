@@ -24,13 +24,16 @@ function parseBool(value: string | undefined): boolean {
 function rowToParticipant(row: SheetRow, idx: number) {
   const id = row.id?.trim() || `${idx + 1}`;
   const preferredPartnersStr = row.preferredRidePartners?.trim() || "";
-  const preferredRidePartners: string[] = preferredPartnersStr 
-    ? preferredPartnersStr.split(",").map(s => s.trim()).filter(Boolean)
+  const preferredRidePartners: string[] = preferredPartnersStr
+    ? preferredPartnersStr
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [];
-  
+
   const isSelfDriver = parseBool(row.selfDriver);
   const isDriver = parseBool(row.driver);
-  
+
   return {
     id,
     name: row.name?.trim() || `Participant ${id}`,
@@ -38,7 +41,7 @@ function rowToParticipant(row: SheetRow, idx: number) {
     email: row.email?.trim() || `unknown-${id}@example.com`,
     timestamp: row.timestamp?.trim() || new Date().toISOString(),
     driver: isDriver && !isSelfDriver,
-    seats: (isDriver && !isSelfDriver) ? (Number(row.seats || 0) || 0) : 0,
+    seats: isDriver && !isSelfDriver ? Number(row.seats || 0) || 0 : 0,
     selfDriver: isSelfDriver,
     extraComments: row.extraComments?.trim() || "",
     preferredRidePartners: preferredRidePartners || [],

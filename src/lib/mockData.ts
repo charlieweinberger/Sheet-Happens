@@ -1,6 +1,9 @@
 import type { Participant } from "@/types";
 
-export const mockSheetParticipants: Omit<Participant, "status" | "isOfficer" | "appNotes" | "carId" | "seatIndex" | "checkInState">[] = [
+export const mockSheetParticipants: Omit<
+  Participant,
+  "status" | "isOfficer" | "appNotes" | "carId" | "seatIndex" | "checkInState"
+>[] = [
   {
     id: "1",
     name: "Alex Nguyen",

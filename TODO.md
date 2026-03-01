@@ -1,20 +1,14 @@
 # Required Features
 
-1. make sure carpool preferences are (1) shown in participant view, and (2) considered in carpool view
-
-2. make working w/ actual AAC spreadsheets
+1. make working w/ actual AAC spreadsheets
   1. convert this to how AAC spreadsheets look
   2. add actual API connection to sheets
   3. add home page so that you can choose which spreadsheet to view
 
-3. keep track of membership
+2. keep track of membership
   1. add ability to search through membership spreadsheet
   2. in the participants tab, mention (e.g. add a column) if someone is a paid member
   3. make sure to prioritize them in the carpool (put a star next to their name)
-
-4. add functionality to support self-drivers
-
-5. fix partcipant person card border-radius not matching color border-radius
 
 # Advanced Features
 

@@ -14,14 +14,19 @@ export function DashboardSummary({ stats }: { stats: DashboardStats }) {
   return (
     <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
       {cards.map((card) => (
-        <Card key={card.label} className="bg-gradient-to-b from-white to-zinc-50">
+        <Card
+          key={card.label}
+          className="bg-linear-to-b from-white to-zinc-50"
+        >
           <CardHeader>
             <CardTitle className="text-xs uppercase tracking-wide text-zinc-500">
               {card.label}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tracking-tight">{card.value}</p>
+            <p className="text-3xl font-semibold tracking-tight">
+              {card.value}
+            </p>
           </CardContent>
         </Card>
       ))}
