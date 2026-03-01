@@ -30,8 +30,8 @@ export function optimizeCarpoolAssignments(
 ) {
   const eligible = participants.filter((p) => p.status !== "cancelled");
 
-  const drivers = eligible.filter((p) => p.driver && p.seats > 0);
-  const riders = eligible.filter((p) => !p.driver);
+  const drivers = eligible.filter((p) => p.driver && !p.selfDriver && p.seats > 0);
+  const riders = eligible.filter((p) => !p.driver && !p.selfDriver);
 
   const cars: Car[] = drivers.map((driver) => ({
     id: `car-${driver.id}`,

@@ -98,13 +98,11 @@ export function getStatusCardClass(status: EventStatus): string {
 }
 
 export function getStatusSelectClass(status: EventStatus): string {
-  const bgColor = getStatusColor(status);
+  const bgColor = getStatusLightBgColor(status);
   const borderColor = getStatusBorderColor(status);
+  const textColor = getStatusDarkTextColor(status);
   
-  if (status === "awaiting") {
-    return `rounded px-2 py-1 text-xs border font-semibold ${borderColor} bg-white text-zinc-900`;
-  }
-  return `rounded px-2 py-1 text-xs border font-semibold ${borderColor} ${bgColor}`;
+  return `rounded px-2 py-1 text-xs border-2 font-semibold ${borderColor} ${bgColor} ${textColor}`;
 }
 
 export function getStatusButtonClass(status: EventStatus, isActive: boolean): string {

@@ -28,7 +28,9 @@ export function ParticipantCard({
           <p className="text-xs text-zinc-500">{participant.phone}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {participant.driver ? (
+          {participant.selfDriver ? (
+            <Badge variant="info">Self-Driver</Badge>
+          ) : participant.driver ? (
             <Badge variant="info">Driver • {participant.seats} seats</Badge>
           ) : (
             <Badge>Rider</Badge>

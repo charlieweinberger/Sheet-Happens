@@ -36,7 +36,7 @@ function normalizeSeatIndexes(participants: Participant[]) {
   const normalized = participants.map((participant) => ({ ...participant }));
   const byId = new Map(normalized.map((participant) => [participant.id, participant]));
 
-  const drivers = normalized.filter((participant) => participant.driver && participant.seats > 0);
+  const drivers = normalized.filter((participant) => participant.driver && !participant.selfDriver && participant.seats > 0);
 
   for (const driver of drivers) {
     const carId = `car-${driver.id}`;
@@ -122,7 +122,7 @@ export async function syncFromSheet() {
 
 function buildCars(participants: Participant[]) {
   const driverCars = participants
-    .filter((p) => p.driver && p.status !== "cancelled" && p.seats > 0)
+    .filter((p) => p.driver && !p.selfDriver && p.status !== "cancelled" && p.seats > 0)
     .map((driver) => {
       const seatAssignments: Array<string | null> = Array.from({ length: driver.seats }, () => null);
 
@@ -171,7 +171,7 @@ function buildStats(participants: Participant[]): DashboardStats {
   const confirmed = participants.filter((p) => p.status === "confirmed").length;
   const cancelled = participants.filter((p) => p.status === "cancelled").length;
   const awaitingResponse = participants.filter((p) => p.status === "awaiting").length;
-  const carsCreated = participants.filter((p) => p.driver && p.seats > 0).length;
+  const carsCreated = participants.filter((p) => p.driver && !p.selfDriver && p.seats > 0).length;
   const officersAttending = participants.filter(
     (p) => p.isOfficer && p.status !== "cancelled",
   ).length;
@@ -240,7 +240,7 @@ export async function updateParticipantState(
     && updates.status !== "cancelled"
   ) {
     const allParticipants = await syncFromSheet();
-    const currentDriver = allParticipants.find((p) => p.id === participantId && p.driver);
+    const currentDriver = allParticipants.find((p) => p.id === participantId && p.driver && !p.selfDriver);
 
     if (currentDriver) {
       const carId = `car-${participantId}`;
@@ -271,7 +271,7 @@ export async function assignRiderToCar(riderId: string, carId: string | null, se
     return getEventData();
   }
 
-  const targetDriver = participants.find((p) => p.driver && `car-${p.id}` === carId);
+  const targetDriver = participants.find((p) => p.driver && !p.selfDriver && `car-${p.id}` === carId);
   if (!targetDriver || seatIndex < 0 || seatIndex >= targetDriver.seats) {
     return getEventData();
   }
@@ -315,7 +315,7 @@ export async function autoAssignCars(prioritizeOfficers: boolean) {
   const participants = await syncFromSheet();
   const result = optimizeCarpoolAssignments(participants, prioritizeOfficers);
 
-  const riderIds = participants.filter((p) => !p.driver).map((p) => p.id);
+  const riderIds = participants.filter((p) => !p.driver && !p.selfDriver).map((p) => p.id);
 
   if (riderIds.length > 0) {
     await db

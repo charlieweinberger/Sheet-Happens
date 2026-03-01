@@ -16,8 +16,8 @@ export interface Participant {
   timestamp: string;
   driver: boolean;
   seats: number;
+  selfDriver: boolean;
   riderPreferences: string;
-  sourceNotes: string;
   preferredRidePartners: string[];
 
   status: EventStatus;

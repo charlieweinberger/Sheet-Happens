@@ -9,7 +9,7 @@ import {
   useDroppable,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Search } from "lucide-react";
+import { Search, User } from "lucide-react";
 import { DashboardSummary } from "@/components/dashboard-summary";
 import { InsightPanel } from "@/components/insight-panel";
 import { ParticipantCard } from "@/components/participant-card";
@@ -91,7 +91,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<
-    "all" | "officer" | "driver" | "rider"
+    "all" | "officer" | "driver" | "self-driver" | "rider"
   >("all");
   const [filterStatus, setFilterStatus] = useState<"all" | EventStatus>("all");
   const [filterTextSent, setFilterTextSent] = useState<
@@ -121,9 +121,11 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
     if (filterRole === "officer") {
       result = result.filter((p) => p.isOfficer);
     } else if (filterRole === "driver") {
-      result = result.filter((p) => p.driver);
+      result = result.filter((p) => p.driver && !p.selfDriver);
+    } else if (filterRole === "self-driver") {
+      result = result.filter((p) => p.selfDriver);
     } else if (filterRole === "rider") {
-      result = result.filter((p) => !p.driver);
+      result = result.filter((p) => !p.driver && !p.selfDriver);
     }
 
     // Status filter
@@ -173,11 +175,14 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
   ]);
 
   const riders = data.participants.filter(
-    (p) => !p.driver && p.status !== "cancelled",
+    (p) => !p.driver && !p.selfDriver && p.status !== "cancelled",
+  );
+  const selfDrivers = data.participants.filter(
+    (p) => p.selfDriver && p.status !== "cancelled",
   );
   const driversById = useMemo(
     () =>
-      new Map(data.participants.filter((p) => p.driver).map((d) => [d.id, d])),
+      new Map(data.participants.filter((p) => p.driver && !p.selfDriver).map((d) => [d.id, d])),
     [data.participants],
   );
   const unassigned = riders.filter((r) => {
@@ -294,6 +299,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                       <option value="all">All Roles</option>
                       <option value="officer">Officers</option>
                       <option value="driver">Drivers</option>
+                      <option value="self-driver">Self-Drivers</option>
                       <option value="rider">Riders</option>
                     </select>
                     <select
@@ -391,6 +397,9 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                             Role
                           </th>
                           <th className="px-3 py-2 text-left font-semibold text-zinc-900">
+                            Preferred Partners
+                          </th>
+                          <th className="px-3 py-2 text-left font-semibold text-zinc-900">
                             Status
                           </th>
                         </tr>
@@ -401,18 +410,24 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                             key={participant.id}
                             className="border-b border-zinc-100 hover:bg-zinc-50"
                           >
-                            <td
-                              className={`px-3 py-2 ${participant.isOfficer ? "text-blue-600 font-semibold" : "text-zinc-900"}`}
-                            >
-                              {participant.name}
+                            <td className="px-3 py-2 text-zinc-900">
+                              <div className="flex items-center gap-2">
+                                {participant.name}
+                                {participant.isOfficer && <User className="h-4 w-4" />}
+                              </div>
                             </td>
                             <td className="px-3 py-2 text-zinc-600 text-xs">
                               {participant.email}
                             </td>
                             <td className="px-3 py-2 text-zinc-600 text-xs">
-                              {participant.driver
-                                ? `Driver (${participant.seats} seat${participant.seats > 1 ? "s" : ""})`
-                                : "Rider"}
+                              {participant.selfDriver
+                                ? "Self-Driver"
+                                : participant.driver
+                                  ? `Driver (${participant.seats} seat${participant.seats > 1 ? "s" : ""})`
+                                  : "Rider"}
+                            </td>
+                            <td className="px-3 py-2 text-zinc-600 text-xs">
+                              {participant.preferredRidePartners?.length ? participant.preferredRidePartners.join(", ") : "-"}
                             </td>
                             <td className="px-3 py-2">
                               <select
@@ -504,14 +519,40 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <UnassignedLane>
-                    {unassigned.map((participant) => (
-                      <DraggableRider
-                        key={participant.id}
-                        participant={participant}
-                      />
-                    ))}
-                  </UnassignedLane>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <UnassignedLane>
+                        {unassigned.map((participant) => (
+                          <DraggableRider
+                            key={participant.id}
+                            participant={participant}
+                          />
+                        ))}
+                      </UnassignedLane>
+                    </div>
+                    <div className="flex-1">
+                      <Card className="min-h-40 border-2 border-zinc-200">
+                        <CardHeader>
+                          <CardTitle>Self-Drivers</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {selfDrivers.map((participant) => (
+                            <div
+                              key={participant.id}
+                              className={cn(
+                                "w-full rounded-md border-2 p-2 text-left text-sm flex items-center justify-between gap-2",
+                                getStatusBorderColor(participant.status),
+                                getStatusLightBgColor(participant.status),
+                              )}
+                            >
+                              <span className={getStatusDarkTextColor(participant.status)}>{participant.name}</span>
+                              <PreferredPartnersTooltip participant={participant} />
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
                   {data.cars.map((car: Car) => (
                     <CarVisualization
                       key={car.id}

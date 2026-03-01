@@ -10,6 +10,7 @@ type SheetRow = {
   timestamp?: string;
   driver?: string;
   seats?: string;
+  selfDriver?: string;
   riderPreferences?: string;
   notes?: string;
   preferredRidePartners?: string;
@@ -27,16 +28,19 @@ function rowToParticipant(row: SheetRow, idx: number) {
     ? preferredPartnersStr.split(",").map(s => s.trim()).filter(Boolean)
     : [];
   
+  const isSelfDriver = parseBool(row.selfDriver);
+  const isDriver = parseBool(row.driver);
+  
   return {
     id,
     name: row.name?.trim() || `Participant ${id}`,
     phone: row.phone?.trim() || "",
     email: row.email?.trim() || `unknown-${id}@example.com`,
     timestamp: row.timestamp?.trim() || new Date().toISOString(),
-    driver: parseBool(row.driver),
-    seats: Number(row.seats || 0) || 0,
+    driver: isDriver && !isSelfDriver,
+    seats: (isDriver && !isSelfDriver) ? (Number(row.seats || 0) || 0) : 0,
+    selfDriver: isSelfDriver,
     riderPreferences: row.riderPreferences?.trim() || "",
-    sourceNotes: row.notes?.trim() || "",
     preferredRidePartners: preferredRidePartners || [],
   } satisfies Omit<
     Participant,
