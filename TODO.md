@@ -1,0 +1,4 @@
+- voice -> AI -> update
+  - e.g. I say "Alex in John's car" -> AI parses my voice and visually puts Alex in John's ca
+- make the "present" status buttons synced with the event mode's "mark present" (or otherwise combine the "event mode" into the regular mode")
+- instead of having an event mode, just make it mobile-friendly
