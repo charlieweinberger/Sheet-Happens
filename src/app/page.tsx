@@ -1,9 +1,5 @@
-import { OperationsStudio } from "@/components/operations-studio";
-import { getEventData } from "@/lib/eventStore";
+import { SheetList } from "@/components/sheets/sheet-list";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const data = await getEventData();
-  return <OperationsStudio initialData={data} />;
+export default function Home() {
+  return <SheetList />;
 }

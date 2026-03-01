@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { DndContext, DragEndEvent, closestCenter } from "@dnd-kit/core";
 import { DashboardSummary } from "@/components/dashboard/dashboard-summary";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
@@ -27,7 +28,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Car, EventData } from "@/types";
 
-export function OperationsStudio({ initialData }: { initialData: EventData }) {
+export function OperationsStudio({ 
+  initialData, 
+  sheetName 
+}: { 
+  initialData: EventData;
+  sheetName: string;
+}) {
   const [data, setData] = useState(initialData);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterOfficer, setFilterOfficer] = useState<FilterOfficer>("all");
@@ -135,12 +142,19 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
     <main className="min-h-screen bg-zinc-100 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="rounded-xl border border-zinc-200 bg-white p-4">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Event Operations Studio
-          </h1>
-          <p className="text-sm text-zinc-500">
-            Mission Control for signups, carpools, and live check-in.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {sheetName}
+              </h1>
+              <p className="text-sm text-zinc-500">
+                Mission Control for signups, carpools, and live check-in.
+              </p>
+            </div>
+            <Link href="/">
+              <Button variant="outline">← Back to Home</Button>
+            </Link>
+          </div>
         </header>
 
         <DashboardSummary stats={data.stats} />
