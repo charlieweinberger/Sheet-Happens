@@ -186,7 +186,7 @@ export function OperationsStudio({
             <div>
               <h1 className="text-2xl font-bold tracking-tight">{sheetName}</h1>
               <p className="text-sm text-zinc-500">
-                Mission Control for signups, carpools, and live check-in.
+                Operations hub for participant management, carpool coordination, and live event insights.
               </p>
             </div>
             <Link href="/">
@@ -281,6 +281,21 @@ export function OperationsStudio({
               </Card>
 
               <div className="space-y-5">
+                <VoiceControl
+                  participants={data.participants}
+                  onCommandExecuted={() => {
+                    startTransition(async () => {
+                      const next = await fetchJson("/api/event-data", {
+                        method: "POST",
+                        body: JSON.stringify({ sheetId }),
+                      });
+                      setData(next);
+                    });
+                  }}
+                  onError={(error) => {
+                    console.error("Voice control error:", error);
+                  }}
+                />
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Filters</CardTitle>
@@ -382,23 +397,38 @@ export function OperationsStudio({
                   <Card>
                     <CardContent className="pt-4">
                       <div className="space-y-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="w-full"
-                          onClick={() =>
-                            mutate("/api/carpool/auto-assign", {
-                              method: "POST",
-                              body: JSON.stringify({
-                                prioritizeOfficers: true,
-                                assignmentScope: autoAssignEligibility,
-                                sheetId,
-                              }),
-                            })
-                          }
-                        >
-                          Auto Assign
-                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="w-full"
+                            onClick={() =>
+                              mutate("/api/carpool/auto-assign", {
+                                method: "POST",
+                                body: JSON.stringify({
+                                  prioritizeOfficers: true,
+                                  assignmentScope: autoAssignEligibility,
+                                  sheetId,
+                                }),
+                              })
+                            }
+                          >
+                            Auto Assign
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() =>
+                              mutate("/api/carpool/reset", {
+                                method: "POST",
+                                body: JSON.stringify({ sheetId }),
+                              })
+                            }
+                          >
+                            Reset Carpool
+                          </Button>
+                        </div>
 
                         <label className="block text-xs text-zinc-600">
                           Auto-assign only:

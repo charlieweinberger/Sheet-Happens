@@ -618,6 +618,22 @@ export async function autoAssignCars(
   return getEventData(sheetId);
 }
 
+export async function resetCarpool(sheetId?: string) {
+  const participants = await syncFromSheet(sheetId);
+  const participantIds = participants.map((participant) => participant.id);
+
+  if (participantIds.length > 0) {
+    await db
+      .update(participantState)
+      .set({ carId: null, seatIndex: null, updatedAt: new Date() })
+      .where(inArray(participantState.participantId, participantIds));
+  }
+
+  await db.delete(cars);
+
+  return getEventData(sheetId);
+}
+
 /**
  * Update participant driver status
  * Can convert between driver/self-driver/rider
@@ -742,10 +758,6 @@ export async function moveRiderToCar(
   if (nextSeat >= targetDriver.seats) {
     return getEventData(sheetId);
   }
-
-  // Remove from previous car if assigned
-  const previousCarId = rider.carId;
-  const previousSeatIndex = rider.seatIndex;
 
   await db
     .update(participantState)

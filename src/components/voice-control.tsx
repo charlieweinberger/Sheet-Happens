@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Mic,
-  MicOff,
   Check,
   X,
-  AlertCircle,
   Trash2,
   ChevronDown,
   ChevronUp,
@@ -16,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import type { VoiceCommand, CommandExecutionResult } from "@/lib/aiInsights";
 import { parseVoiceCommand } from "@/lib/aiInsights";
 import type { Participant } from "@/types";
+import { VoiceCommandCard } from "@/components/shared/voice-command-card";
 
 interface VoiceLog {
   id: string;
@@ -87,7 +85,129 @@ export default function VoiceControl({
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  const executeCommand = useCallback(
+    async (command: VoiceCommand) => {
+      if (command.confidence === 0) {
+        onError?.(command.interpretation);
+        return;
+      }
+
+      setIsExecuting(true);
+
+      try {
+        let endpoint = "";
+        let method = "PATCH";
+        let body: Record<string, unknown> = {};
+
+        switch (command.type) {
+          case "driver_status":
+            endpoint = `/api/participants/${command.participantId}`;
+            body = {
+              driver: command.newDriverStatus,
+              selfDriver: command.newSelfDriverStatus,
+            };
+            break;
+
+          case "seat_capacity":
+            endpoint = `/api/participants/${command.participantId}`;
+            body = {
+              seats: command.newSeats,
+            };
+            break;
+
+          case "move_rider":
+            endpoint = `/api/carpool/move`;
+            method = "POST";
+            body = {
+              riderId: command.participantId,
+              targetCarId: command.targetCarId,
+            };
+            break;
+
+          case "set_status":
+            endpoint = `/api/participants/${command.participantId}`;
+            body = {
+              status: command.newEventStatus,
+            };
+            break;
+        }
+
+        const response = await fetch(endpoint, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const result: CommandExecutionResult = {
+          success: true,
+          message: command.interpretation,
+          participantId: command.participantId,
+        };
+
+        // Add to log
+        const logEntry: VoiceLog = {
+          id: `${Date.now()}-${Math.random()}`,
+          timestamp: new Date(),
+          command,
+          result,
+        };
+        setCommandLog((prev) => [logEntry, ...prev]);
+
+        onCommandExecuted?.(result);
+
+        // Clear transcript after brief delay
+        setTimeout(() => {
+          setTranscript("");
+          setParsedCommand(null);
+        }, 1500);
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "Unknown error";
+        const result: CommandExecutionResult = {
+          success: false,
+          message: `Failed to execute: ${command.interpretation}`,
+          error: errorMsg,
+        };
+
+        // Add to log
+        const logEntry: VoiceLog = {
+          id: `${Date.now()}-${Math.random()}`,
+          timestamp: new Date(),
+          command,
+          result,
+        };
+        setCommandLog((prev) => [logEntry, ...prev]);
+
+        onError?.(errorMsg);
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    [onError, onCommandExecuted]
+  );
+
   useEffect(() => {
+    const interpretTranscript = async (spokenText: string) => {
+      try {
+        const command = parseVoiceCommand(spokenText, participants);
+        setTranscript(spokenText);
+        setParsedCommand(command);
+
+        // Auto-execute if confident
+        if (command.confidence > 0) {
+          setTimeout(() => executeCommand(command), 100);
+        }
+      } catch (error) {
+        const errorMsg =
+          error instanceof Error ? error.message : "Unknown error";
+        onError?.(errorMsg);
+      }
+    };
+
     const SpeechRecognitionCtor =
       (typeof window !== "undefined" &&
         ((window as unknown) as Record<string, unknown>)
@@ -138,23 +258,7 @@ export default function VoiceControl({
     };
 
     recognitionRef.current = recognition;
-  }, [onError]);
-
-  const interpretTranscript = async (spokenText: string) => {
-    try {
-      const command = parseVoiceCommand(spokenText, participants);
-      setTranscript(spokenText);
-      setParsedCommand(command);
-
-      // Auto-execute if confident
-      if (command.confidence > 0) {
-        setTimeout(() => executeCommand(command), 100);
-      }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      onError?.(errorMsg);
-    }
-  };
+  }, [participants, onError, executeCommand]);
 
   const startListening = () => {
     if (recognitionRef.current) {
@@ -173,107 +277,6 @@ export default function VoiceControl({
     }
   };
 
-  const executeCommand = async (command: VoiceCommand) => {
-    if (command.confidence === 0) {
-      onError?.(command.interpretation);
-      return;
-    }
-
-    setIsExecuting(true);
-
-    try {
-      let endpoint = "";
-      let method = "PATCH";
-      let body: Record<string, unknown> = {};
-
-      switch (command.type) {
-        case "driver_status":
-          endpoint = `/api/participants/${command.participantId}`;
-          body = {
-            driver: command.newDriverStatus,
-            selfDriver: command.newSelfDriverStatus,
-          };
-          break;
-
-        case "seat_capacity":
-          endpoint = `/api/participants/${command.participantId}`;
-          body = {
-            seats: command.newSeats,
-          };
-          break;
-
-        case "move_rider":
-          endpoint = `/api/carpool/move`;
-          method = "POST";
-          body = {
-            riderId: command.participantId,
-            targetCarId: command.targetCarId,
-          };
-          break;
-
-        case "set_status":
-          endpoint = `/api/participants/${command.participantId}`;
-          body = {
-            status: command.newEventStatus,
-          };
-          break;
-      }
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const result: CommandExecutionResult = {
-        success: true,
-        message: command.interpretation,
-        participantId: command.participantId,
-      };
-
-      // Add to log
-      const logEntry: VoiceLog = {
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: new Date(),
-        command,
-        result,
-      };
-      setCommandLog((prev) => [logEntry, ...prev]);
-
-      onCommandExecuted?.(result);
-
-      // Clear transcript after brief delay
-      setTimeout(() => {
-        setTranscript("");
-        setParsedCommand(null);
-      }, 1500);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      const result: CommandExecutionResult = {
-        success: false,
-        message: `Failed to execute: ${command.interpretation}`,
-        error: errorMsg,
-      };
-
-      // Add to log
-      const logEntry: VoiceLog = {
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: new Date(),
-        command,
-        result,
-      };
-      setCommandLog((prev) => [logEntry, ...prev]);
-
-      onError?.(errorMsg);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   const clearLog = () => {
     setCommandLog([]);
   };
@@ -289,69 +292,14 @@ export default function VoiceControl({
 
   return (
     <div className="space-y-4">
-      <Card className="p-4">
-        <div className="space-y-4">
-          {/* Mic Button */}
-          <div className="flex gap-2">
-            {!isListening ? (
-              <Button
-                onClick={startListening}
-                className="flex-1 gap-2"
-                variant="default"
-              >
-                <Mic className="w-4 h-4" />
-                Start Voice Command
-              </Button>
-            ) : (
-              <Button
-                onClick={stopListening}
-                className="flex-1 gap-2"
-                variant="secondary"
-              >
-                <MicOff className="w-4 h-4" />
-                Stop Listening
-              </Button>
-            )}
-          </div>
-
-          {/* Listening indicator */}
-          {isListening && (
-            <div className="text-sm text-amber-600 font-medium animate-pulse">
-              Listening...
-            </div>
-          )}
-
-          {/* Transcript display */}
-          {transcript && (
-            <div className="bg-gray-50 p-3 rounded border border-gray-200">
-              <div className="text-xs text-gray-600 mb-1">Heard:</div>
-              <div className="text-sm font-medium">{transcript}</div>
-            </div>
-          )}
-
-          {/* Parsed command display */}
-          {parsedCommand && parsedCommand.confidence === 0 && (
-            <div className="bg-red-50 p-3 rounded border border-red-200 flex gap-2">
-              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <div className="text-sm text-red-600">
-                <div className="font-medium">{parsedCommand.interpretation}</div>
-                {parsedCommand.ambiguities?.length ? (
-                  <div className="text-xs mt-1">
-                    {parsedCommand.ambiguities.join("; ")}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {/* Executing indicator */}
-          {isExecuting && (
-            <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm text-blue-600 font-medium animate-pulse">
-              Executing command...
-            </div>
-          )}
-        </div>
-      </Card>
+      <VoiceCommandCard
+        isListening={isListening}
+        transcript={transcript}
+        parsedCommand={parsedCommand}
+        isExecuting={isExecuting}
+        onStartListening={startListening}
+        onStopListening={stopListening}
+      />
 
       {/* Command Log */}
       {commandLog.length > 0 && (
