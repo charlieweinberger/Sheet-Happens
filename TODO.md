@@ -3,7 +3,6 @@
 1. make working w/ actual AAC spreadsheets
   1. convert this to how AAC spreadsheets look
   2. add actual API connection to sheets
-  3. add home page so that you can choose which spreadsheet to view
 
 2. keep track of membership
   1. add ability to search through membership spreadsheet

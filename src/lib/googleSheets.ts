@@ -67,6 +67,46 @@ function extractServiceAccount() {
   return null;
 }
 
+export interface GoogleSheetMetadata {
+  id: string;
+  name: string;
+  modifiedTime: string;
+}
+
+export async function listGoogleSheets(): Promise<GoogleSheetMetadata[]> {
+  const serviceAccount = extractServiceAccount();
+
+  if (!serviceAccount) {
+    return [];
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    credentials: serviceAccount,
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
+
+  const drive = google.drive({ version: "v3", auth });
+
+  try {
+    const response = await drive.files.list({
+      q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+      spaces: "drive",
+      fields: "files(id, name, modifiedTime)",
+      pageSize: 100,
+    });
+
+    const files = response.data.files ?? [];
+    return files.map((file) => ({
+      id: file.id || "",
+      name: (file.name || "Untitled").replace(/ \(responses\)$/, ""),
+      modifiedTime: file.modifiedTime || new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error("Error listing Google Sheets:", error);
+    return [];
+  }
+}
+
 export async function fetchSheetParticipants() {
   const sheetId = process.env.GOOGLE_SHEET_ID;
   const sheetRange = process.env.GOOGLE_SHEET_RANGE ?? "Form Responses 1!A:I";
