@@ -25,6 +25,7 @@ export function DraggableRider({ participant }: DraggableRiderProps) {
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
   };
 
   return (
@@ -45,8 +46,8 @@ export function DraggableRider({ participant }: DraggableRiderProps) {
         {participant.isPaidMember && (
           <PaidMemberIcon size="small" />
         )}
+        <PreferredPartnersTooltip participant={participant} />
       </span>
-      <PreferredPartnersTooltip participant={participant} />
     </button>
   );
 }

@@ -26,6 +26,7 @@ export function DraggableOccupant({ occupant }: DraggableOccupantProps) {
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
   };
 
   return (
