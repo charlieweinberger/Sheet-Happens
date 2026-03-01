@@ -15,7 +15,7 @@ import { InsightPanel } from "@/components/insight-panel";
 import { ParticipantCard } from "@/components/participant-card";
 import { CarVisualization } from "@/components/car-visualization";
 import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
-import { getStatusBorderColor, getStatusLightBgColor, getStatusDarkTextColor } from "@/lib/statusColors";
+import { getStatusCardClass, getStatusDarkTextColor, getStatusSelectClass, getStatusBorderColor, getStatusLightBgColor } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -362,19 +362,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                     {filteredParticipants.map((participant) => (
                       <div
                         key={participant.id}
-                        className={`rounded-xl border-2 ${
-                          participant.status === "text_sent"
-                            ? "border-purple-400 bg-purple-50"
-                            : participant.status === "ambiguous"
-                              ? "border-yellow-400 bg-yellow-50"
-                              : participant.status === "confirmed"
-                                ? "border-green-400 bg-green-50"
-                                : participant.status === "cancelled"
-                                  ? "border-red-400 bg-red-50"
-                                  : participant.status === "present"
-                                    ? "border-blue-400 bg-blue-50"
-                                    : ""
-                        }`}
+                        className={getStatusCardClass(participant.status)}
                       >
                         <ParticipantCard
                           participant={participant}
@@ -428,19 +416,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                             </td>
                             <td className="px-3 py-2">
                               <select
-                                className={`rounded px-2 py-1 text-xs border font-semibold text-white ${
-                                  participant.status === "text_sent"
-                                    ? "border-purple-400 bg-purple-600"
-                                    : participant.status === "ambiguous"
-                                      ? "border-yellow-400 bg-yellow-500"
-                                      : participant.status === "confirmed"
-                                        ? "border-green-400 bg-green-600"
-                                        : participant.status === "cancelled"
-                                          ? "border-red-400 bg-red-600"
-                                          : participant.status === "present"
-                                            ? "border-blue-400 bg-blue-600"
-                                            : "border-zinc-300 bg-white text-zinc-900"
-                                }`}
+                                className={getStatusSelectClass(participant.status)}
                                 value={`${participant.status}|${participant.checkInState}`}
                                 onChange={(e) => {
                                   const [status, checkInState] =

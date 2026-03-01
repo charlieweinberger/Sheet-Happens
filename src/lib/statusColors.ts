@@ -90,3 +90,42 @@ export function getStatusDarkTextColor(status: EventStatus): string {
       return "text-zinc-900";
   }
 }
+
+export function getStatusCardClass(status: EventStatus): string {
+  const borderColor = getStatusBorderColor(status);
+  const bgColor = getStatusLightBgColor(status);
+  return `rounded-xl border-2 ${borderColor} ${bgColor}`;
+}
+
+export function getStatusSelectClass(status: EventStatus): string {
+  const bgColor = getStatusColor(status);
+  const borderColor = getStatusBorderColor(status);
+  
+  if (status === "awaiting") {
+    return `rounded px-2 py-1 text-xs border font-semibold ${borderColor} bg-white text-zinc-900`;
+  }
+  return `rounded px-2 py-1 text-xs border font-semibold ${borderColor} ${bgColor}`;
+}
+
+export function getStatusButtonClass(status: EventStatus, isActive: boolean): string {
+  if (!isActive) {
+    return "bg-zinc-200 text-zinc-700 hover:bg-zinc-300";
+  }
+  
+  switch (status) {
+    case "awaiting":
+      return "bg-zinc-900 text-white";
+    case "text_sent":
+      return "bg-purple-600 text-white ring-1 ring-purple-400";
+    case "confirmed":
+      return "bg-green-600 text-white ring-1 ring-green-400";
+    case "ambiguous":
+      return "bg-yellow-500 text-white ring-1 ring-yellow-400";
+    case "cancelled":
+      return "bg-red-600 text-white ring-1 ring-red-400";
+    case "present":
+      return "bg-blue-600 text-white ring-1 ring-blue-400 hover:bg-blue-700";
+    default:
+      return "bg-zinc-200 text-zinc-700 hover:bg-zinc-300";
+  }
+}
