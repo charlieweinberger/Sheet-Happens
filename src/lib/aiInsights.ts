@@ -32,221 +32,268 @@ export function parseVoiceCommand(
   voiceInput: string,
   participants: Participant[],
 ): VoiceCommand {
-  const input = voiceInput.toLowerCase().trim();
   const ambiguities: string[] = [];
+  const normalizedInput = voiceInput
+    .toLowerCase()
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[.,!?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  // Helper: Find participant by name (fuzzy matching)
+  const wordToNumber: Record<string, number> = {
+    zero: 0,
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+  };
+
+  const roleAliases: Record<string, "driver" | "self-driver" | "rider"> = {
+    driver: "driver",
+    drivers: "driver",
+    "self driver": "self-driver",
+    "self-driver": "self-driver",
+    selfdriver: "self-driver",
+    rider: "rider",
+    riders: "rider",
+    passenger: "rider",
+    passengers: "rider",
+  };
+
+  const statusAliases: Record<string, EventStatus> = {
+    awaiting: "awaiting",
+    wait: "awaiting",
+    waiting: "awaiting",
+    pending: "awaiting",
+    "text sent": "text_sent",
+    texted: "text_sent",
+    ambiguous: "ambiguous",
+    unsure: "ambiguous",
+    confirmed: "confirmed",
+    confirm: "confirmed",
+    cancelled: "cancelled",
+    canceled: "cancelled",
+    cancel: "cancelled",
+    present: "present",
+    arrived: "present",
+    checkedin: "present",
+    "checked in": "present",
+  };
+
   const findParticipant = (name: string): Participant | undefined => {
-    const cleanName = name.toLowerCase().trim();
-    const exact = participants.find(
-      (p) => p.name.toLowerCase() === cleanName,
-    );
+    const clean = name
+      .toLowerCase()
+      .replace(/\b(the|a|an|please)\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!clean) return undefined;
+
+    const exact = participants.find((p) => p.name.toLowerCase() === clean);
     if (exact) return exact;
 
-    // Fuzzy: first or last name match
-    const fuzzy = participants.filter((p) => {
-      const nameParts = p.name.toLowerCase().split(" ");
-      return nameParts.some((part) => part.includes(cleanName) || cleanName.includes(part));
+    const byWord = participants.filter((p) => {
+      const pName = p.name.toLowerCase();
+      const parts = pName.split(" ");
+      return pName.includes(clean) || clean.includes(pName) || parts.some((part) => clean === part);
     });
 
-    if (fuzzy.length === 1) return fuzzy[0];
-    if (fuzzy.length > 1) {
-      ambiguities.push(`Found ${fuzzy.length} matches for "${name}": ${fuzzy.map((p) => p.name).join(", ")}`);
-      return fuzzy[0]; // Return first match with warning
+    if (byWord.length === 1) return byWord[0];
+    if (byWord.length > 1) {
+      ambiguities.push(
+        `Found ${byWord.length} matches for \"${name}\": ${byWord
+          .slice(0, 5)
+          .map((p) => p.name)
+          .join(", ")}`,
+      );
+      return byWord[0];
     }
 
     return undefined;
   };
 
-  // Command patterns
-  const patterns = {
-    // Driver status: "make Alex a driver", "make Alex a self-driver", "make Alex a rider"
-    driverStatus: /(?:make|convert|change)\s+(.+?)\s+(?:a|to)\s+(driver|self-driver|rider|passenger)/i,
-    // Seat capacity: "Alex has 4 seats", "give Alex 6 seats", "Alex with 5 seats"
-    seatCapacity: /(?:(.+?)\s+(?:has|with|needs?|get)\s+(\d)\s+seats?|give\s+(.+?)\s+(\d)\s+seats?)/i,
-    // Move rider: "move Alex to John's car", "put Alex in John's car", "assign Alex to John"
-    moveRider: /(?:move|put|assign)\s+(.+?)\s+(?:to|in|with)\s+(.+?)(?:'s)?\s+car/i,
-    // Set status: "confirm Alex", "mark Alex as present", "Alex is confirmed", "cancel Maria"
-    setStatus: /(?:confirm|mark\s+(.+?)\s+as|(.+?)\s+is\s+)(confirmed|present|cancelled|awaiting|ambiguous|text_sent)/i,
+  const extractSeatCount = (text: string): number | null => {
+    const digit = text.match(/\b([0-8])\b/);
+    if (digit) return Number.parseInt(digit[1], 10);
+
+    for (const [word, value] of Object.entries(wordToNumber)) {
+      if (new RegExp(`\\b${word}\\b`, "i").test(text)) {
+        return value;
+      }
+    }
+    return null;
   };
 
-  // Try driver status pattern
-  let match = patterns.driverStatus.exec(input);
-  if (match) {
-    const name = match[1].trim();
-    const status = match[2].toLowerCase();
-    const participant = findParticipant(name);
+  const normalizeRole = (text: string): "driver" | "self-driver" | "rider" | null => {
+    const candidate = text.trim().toLowerCase();
+    if (roleAliases[candidate]) return roleAliases[candidate];
 
-    if (!participant) {
-      return {
-        type: "driver_status",
-        confidence: 0,
-        rawInput: voiceInput,
-        interpretation: `Could not find participant "${name}"`,
-        ambiguities: ambiguities,
-      };
-    }
+    const key = Object.keys(roleAliases).find((k) => candidate.includes(k));
+    return key ? roleAliases[key] : null;
+  };
 
-    const newDriverStatus = status !== "rider" && status !== "passenger";
-    const newSelfDriverStatus = status === "self-driver";
+  const normalizeStatus = (text: string): EventStatus | null => {
+    const candidate = text.trim().toLowerCase();
+    if (statusAliases[candidate]) return statusAliases[candidate];
 
-    return {
-      type: "driver_status",
-      participantId: participant.id,
-      participantName: participant.name,
-      newDriverStatus,
-      newSelfDriverStatus,
-      confidence: 0.9,
-      rawInput: voiceInput,
-      interpretation: `Convert ${participant.name} to ${status}`,
-      ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
-    };
-  }
+    const key = Object.keys(statusAliases).find((k) => candidate.includes(k));
+    return key ? statusAliases[key] : null;
+  };
 
-  // Try seat capacity pattern
-  match = patterns.seatCapacity.exec(input);
-  if (match) {
-    const name = match[1] || match[3];
-    const seats = parseInt(match[2] || match[4], 10);
+  // 1) Move rider patterns: "move alex to john's car", "put alex with john"
+  const moveMatch = normalizedInput.match(
+    /(?:move|put|assign|place|seat)\s+(.+?)\s+(?:to|into|in|with|inside)\s+(.+?)(?:\s+car)?$/i,
+  );
+  if (moveMatch) {
+    const rider = findParticipant(moveMatch[1].replace(/\b(in|to)\b$/i, "").trim());
+    const driverName = moveMatch[2]
+      .replace(/(?:'s)?\s*car$/i, "")
+      .replace(/'s$/i, "")
+      .trim();
+    const driver = findParticipant(driverName);
 
-    if (isNaN(seats) || seats < 0 || seats > 8) {
-      return {
-        type: "seat_capacity",
-        confidence: 0,
-        rawInput: voiceInput,
-        interpretation: `Invalid seat count "${seats}". Must be 0-8.`,
-        ambiguities: ambiguities,
-      };
-    }
-
-    const participant = findParticipant(name.trim());
-    if (!participant) {
-      return {
-        type: "seat_capacity",
-        confidence: 0,
-        rawInput: voiceInput,
-        interpretation: `Could not find participant "${name}"`,
-        ambiguities: ambiguities,
-      };
-    }
-
-    if (!participant.driver) {
-      return {
-        type: "seat_capacity",
-        confidence: 0,
-        rawInput: voiceInput,
-        interpretation: `${participant.name} is not a driver. Only drivers can have seat capacity.`,
-        ambiguities: ambiguities,
-      };
-    }
-
-    return {
-      type: "seat_capacity",
-      participantId: participant.id,
-      participantName: participant.name,
-      newSeats: seats,
-      confidence: 0.9,
-      rawInput: voiceInput,
-      interpretation: `Set ${participant.name}'s seat capacity to ${seats}`,
-      ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
-    };
-  }
-
-  // Try move rider pattern
-  match = patterns.moveRider.exec(input);
-  if (match) {
-    const riderName = match[1].trim();
-    const driverName = match[2].trim();
-
-    const rider = findParticipant(riderName);
     if (!rider) {
       return {
         type: "move_rider",
         confidence: 0,
         rawInput: voiceInput,
-        interpretation: `Could not find rider "${riderName}"`,
-        ambiguities: ambiguities,
+        interpretation: `Could not find rider \"${moveMatch[1].trim()}\"`,
+        ambiguities,
       };
     }
 
-    const driver = findParticipant(driverName);
-    if (!driver) {
+    if (!driver || !driver.driver || driver.selfDriver) {
       return {
         type: "move_rider",
         confidence: 0,
         rawInput: voiceInput,
-        interpretation: `Could not find driver "${driverName}"`,
-        ambiguities: ambiguities,
+        interpretation: `Could not find a valid driver \"${driverName}\"`,
+        ambiguities,
       };
     }
-
-    if (!driver.driver || driver.selfDriver) {
-      return {
-        type: "move_rider",
-        confidence: 0,
-        rawInput: voiceInput,
-        interpretation: `${driver.name} is not a driver. Cannot move rider to non-driver.`,
-        ambiguities: ambiguities,
-      };
-    }
-
-    const targetCarId = `car-${driver.id}`;
 
     return {
       type: "move_rider",
       participantId: rider.id,
       participantName: rider.name,
-      targetCarId,
+      targetCarId: `car-${driver.id}`,
       targetDriverName: driver.name,
-      confidence: 0.9,
+      confidence: 0.95,
       rawInput: voiceInput,
       interpretation: `Move ${rider.name} to ${driver.name}'s car`,
       ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
     };
   }
 
-  // Try set status pattern (multiple format support)
-  const statusPatterns = [
-    /(?:confirm|mark)\s+(.+?)\s+as\s+(confirmed|present|cancelled|awaiting|ambiguous|text_sent)/i,
-    /(.+?)\s+is\s+(confirmed|present|cancelled|awaiting|ambiguous|text_sent)/i,
-    /(confirm|mark.*as\s+present|cancel)\s+(.+)/i,
-  ];
+  // 2) Seat capacity patterns: "alex has four seats", "set john seats to 5"
+  const seatMatch = normalizedInput.match(
+    /(?:set|change|update|give)?\s*(.+?)\s+(?:has|have|with|gets?|needs?|seat(?:s)?(?:\s+capacity)?(?:\s+to)?|capacity(?:\s+to)?)\s+(.+)$/i,
+  );
+  if (seatMatch) {
+    const participant = findParticipant(seatMatch[1].trim());
+    const seats = extractSeatCount(seatMatch[2]);
 
-  for (const statusPattern of statusPatterns) {
-    match = statusPattern.exec(input);
-    if (match) {
-      let name = "";
-      let status = "";
-
-      if (match[1] === "confirm" || match[1] === "cancel") {
-        // Format: "confirm Alex" or "cancel Maria"
-        name = match[2];
-        status = match[1] === "confirm" ? "confirmed" : "cancelled";
-      } else if (match[1]?.toLowerCase().includes("mark")) {
-        // Format: "mark Alex as present"
-        name = match[2];
-        status = match[3];
-      } else {
-        // Format: "Alex is confirmed"
-        name = match[1];
-        status = match[2];
+    if (participant && seats !== null) {
+      if (!participant.driver) {
+        return {
+          type: "seat_capacity",
+          confidence: 0,
+          rawInput: voiceInput,
+          interpretation: `${participant.name} is not a driver. Only drivers can have seat capacity.`,
+          ambiguities,
+        };
       }
 
-      if (!name) continue;
+      return {
+        type: "seat_capacity",
+        participantId: participant.id,
+        participantName: participant.name,
+        newSeats: seats,
+        confidence: 0.9,
+        rawInput: voiceInput,
+        interpretation: `Set ${participant.name}'s seat capacity to ${seats}`,
+        ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
+      };
+    }
+  }
 
-      const validStatuses = ["confirmed", "present", "cancelled", "awaiting", "ambiguous", "text_sent"];
-      const normalizedStatus = status.toLowerCase().replace(/ /g, "_") as EventStatus;
+  // 3) Driver role conversion: "make alex a driver", "alex should be self driver", "alex is rider"
+  const driverMatch = normalizedInput.match(
+    /(?:make|set|convert|change)?\s*(.+?)\s+(?:to|as|a|an|should be|is)\s+(self[-\s]?driver|driver|rider|passenger)/i,
+  );
+  if (driverMatch) {
+    const participant = findParticipant(driverMatch[1].trim());
+    const role = normalizeRole(driverMatch[2]);
 
-      if (!validStatuses.includes(normalizedStatus)) continue;
+    if (!participant) {
+      return {
+        type: "driver_status",
+        confidence: 0,
+        rawInput: voiceInput,
+        interpretation: `Could not find participant \"${driverMatch[1].trim()}\"`,
+        ambiguities,
+      };
+    }
 
-      const participant = findParticipant(name.trim());
+    if (!role) {
+      return {
+        type: "driver_status",
+        confidence: 0,
+        rawInput: voiceInput,
+        interpretation: "Could not determine driver role.",
+        ambiguities,
+      };
+    }
+
+    return {
+      type: "driver_status",
+      participantId: participant.id,
+      participantName: participant.name,
+      newDriverStatus: role !== "rider",
+      newSelfDriverStatus: role === "self-driver",
+      confidence: 0.9,
+      rawInput: voiceInput,
+      interpretation: `Convert ${participant.name} to ${role}`,
+      ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
+    };
+  }
+
+  // 4) Status updates: "confirm alex", "mark alex as present", "alex is cancelled"
+  const statusVerbs = ["confirm", "cancel", "mark", "set", "update"];
+  const startsWithStatusVerb = statusVerbs.some((v) => normalizedInput.startsWith(v));
+
+  if (startsWithStatusVerb) {
+    const verbStyle = normalizedInput.match(/^(confirm|cancel|mark|set|update)\s+(.+?)(?:\s+as\s+(.+))?$/i);
+    if (verbStyle) {
+      const verb = verbStyle[1].toLowerCase();
+      const statusFromVerb = normalizeStatus(verb);
+      const namePart = verbStyle[2].trim();
+      const explicitStatus = verbStyle[3] ? normalizeStatus(verbStyle[3]) : null;
+      const targetStatus = explicitStatus ?? statusFromVerb;
+
+      const participant = findParticipant(namePart);
       if (!participant) {
         return {
           type: "set_status",
           confidence: 0,
           rawInput: voiceInput,
-          interpretation: `Could not find participant "${name}"`,
-          ambiguities: ambiguities,
+          interpretation: `Could not find participant \"${namePart}\"`,
+          ambiguities,
+        };
+      }
+
+      if (!targetStatus) {
+        return {
+          type: "set_status",
+          confidence: 0,
+          rawInput: voiceInput,
+          interpretation: "Could not determine target status.",
+          ambiguities,
         };
       }
 
@@ -254,22 +301,40 @@ export function parseVoiceCommand(
         type: "set_status",
         participantId: participant.id,
         participantName: participant.name,
-        newEventStatus: normalizedStatus,
+        newEventStatus: targetStatus,
         confidence: 0.9,
         rawInput: voiceInput,
-        interpretation: `Set ${participant.name}'s status to ${normalizedStatus}`,
+        interpretation: `Set ${participant.name}'s status to ${targetStatus}`,
         ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
       };
     }
   }
 
-  // No pattern matched
+  const statusIsPattern = normalizedInput.match(/^(.+?)\s+(?:is|as)\s+(.+)$/i);
+  if (statusIsPattern) {
+    const participant = findParticipant(statusIsPattern[1].trim());
+    const status = normalizeStatus(statusIsPattern[2]);
+    if (participant && status) {
+      return {
+        type: "set_status",
+        participantId: participant.id,
+        participantName: participant.name,
+        newEventStatus: status,
+        confidence: 0.85,
+        rawInput: voiceInput,
+        interpretation: `Set ${participant.name}'s status to ${status}`,
+        ambiguities: ambiguities.length > 0 ? ambiguities : undefined,
+      };
+    }
+  }
+
   return {
     type: "driver_status",
     confidence: 0,
     rawInput: voiceInput,
-    interpretation: "Could not parse command. Try: 'make Alex a driver', 'Alex has 4 seats', 'move Alex to John\\'s car', or 'confirm Alex'",
-    ambiguities: ambiguities,
+    interpretation:
+      "Could not parse command. Try examples: 'move Alex to John's car', 'make Alex a self-driver', 'set John seats to 4', 'mark Alex as present'.",
+    ambiguities,
   };
 }
 

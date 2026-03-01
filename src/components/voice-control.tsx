@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Check, X, AlertCircle, Trash2 } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Check,
+  X,
+  AlertCircle,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { VoiceCommand, CommandExecutionResult } from "@/lib/aiInsights";
@@ -74,23 +83,25 @@ export default function VoiceControl({
   const [parsedCommand, setParsedCommand] = useState<VoiceCommand | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [commandLog, setCommandLog] = useState<VoiceLog[]>([]);
+  const [isLogCollapsed, setIsLogCollapsed] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    // Initialize Web Speech API
-    const SpeechRecognition =
+    const SpeechRecognitionCtor =
       (typeof window !== "undefined" &&
-        ((window as unknown) as Record<string, unknown>).SpeechRecognition as SpeechRecognitionAPI) ||
+        ((window as unknown) as Record<string, unknown>)
+          .SpeechRecognition as SpeechRecognitionAPI) ||
       (typeof window !== "undefined" &&
-        ((window as unknown) as Record<string, unknown>).webkitSpeechRecognition as SpeechRecognitionAPI);
+        ((window as unknown) as Record<string, unknown>)
+          .webkitSpeechRecognition as SpeechRecognitionAPI);
 
-    if (!SpeechRecognition) {
-      onError?.("Speech Recognition not supported in this browser");
+    if (!SpeechRecognitionCtor) {
+      onError?.("Speech recognition is not supported in this browser.");
       return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionCtor();
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = "en-US";
@@ -101,31 +112,25 @@ export default function VoiceControl({
       setParsedCommand(null);
     };
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let interimTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          setTranscript(transcript);
-          // Parse immediately
-          const parsed = parseVoiceCommand(transcript, participants);
-          setParsedCommand(parsed);
-          // Auto-execute if confident
-          if (parsed.confidence > 0) {
-            setTimeout(() => executeCommand(parsed), 100);
-          }
-        } else {
-          interimTranscript += transcript;
-        }
+    recognition.onresult = async (event: SpeechRecognitionEvent) => {
+      const finalTranscript = Array.from({ length: event.results.length })
+        .map((_, index) => event.results[index])
+        .filter((result) => result.isFinal)
+        .map((result) => result[0].transcript)
+        .join(" ")
+        .trim();
+
+      if (!finalTranscript) {
+        return;
       }
-      if (interimTranscript) {
-        setTranscript(interimTranscript);
-      }
+
+      setTranscript(finalTranscript);
+      await interpretTranscript(finalTranscript);
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      onError?.(`Speech recognition error: ${event.error}`);
       setIsListening(false);
+      onError?.(`Speech recognition error: ${event.error}`);
     };
 
     recognition.onend = () => {
@@ -133,11 +138,31 @@ export default function VoiceControl({
     };
 
     recognitionRef.current = recognition;
-  }, [participants, onError]);
+  }, [onError]);
+
+  const interpretTranscript = async (spokenText: string) => {
+    try {
+      const command = parseVoiceCommand(spokenText, participants);
+      setTranscript(spokenText);
+      setParsedCommand(command);
+
+      // Auto-execute if confident
+      if (command.confidence > 0) {
+        setTimeout(() => executeCommand(command), 100);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      onError?.(errorMsg);
+    }
+  };
 
   const startListening = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch {
+        onError?.("Unable to start speech recognition.");
+      }
     }
   };
 
@@ -333,56 +358,73 @@ export default function VoiceControl({
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm">AI Action Log</h3>
-            <Button
-              onClick={clearLog}
-              size="sm"
-              variant="ghost"
-              className="gap-1"
-            >
-              <Trash2 className="w-3 h-3" />
-              Clear
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                onClick={() => setIsLogCollapsed((prev) => !prev)}
+                size="sm"
+                variant="ghost"
+                className="gap-1"
+              >
+                {isLogCollapsed ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronUp className="w-3 h-3" />
+                )}
+                {isLogCollapsed ? "Expand" : "Collapse"}
+              </Button>
+              <Button
+                onClick={clearLog}
+                size="sm"
+                variant="ghost"
+                className="gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {commandLog.map((log) => (
-              <div
-                key={log.id}
-                className={`p-3 rounded border text-sm ${
-                  log.result.success
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  {log.result.success ? (
-                    <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
-                  ) : (
-                    <X className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className={`font-medium ${
-                        log.result.success
-                          ? "text-green-900"
-                          : "text-red-900"
-                      }`}
-                    >
-                      {log.result.message}
-                    </div>
-                    <div className="text-xs mt-1 opacity-75">
-                      {formatTime(log.timestamp)} • {log.command.rawInput}
-                    </div>
-                    {log.result.error && (
-                      <div className="text-xs text-red-700 mt-1">
-                        Error: {log.result.error}
-                      </div>
+          {!isLogCollapsed && (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {commandLog.map((log) => (
+                <div
+                  key={log.id}
+                  className={`p-3 rounded border text-sm ${
+                    log.result.success
+                      ? "bg-green-50 border-green-200"
+                      : "bg-red-50 border-red-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    {log.result.success ? (
+                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <X className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     )}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`font-medium ${
+                          log.result.success
+                            ? "text-green-900"
+                            : "text-red-900"
+                        }`}
+                      >
+                        {log.result.message}
+                      </div>
+                      <div className="text-xs mt-1 opacity-75">
+                        {formatTime(log.timestamp)} • {log.command.rawInput}
+                      </div>
+                      {log.result.error && (
+                        <div className="text-xs text-red-700 mt-1">
+                          Error: {log.result.error}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
     </div>
