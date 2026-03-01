@@ -14,6 +14,7 @@ import { DashboardSummary } from "@/components/dashboard-summary";
 import { InsightPanel } from "@/components/insight-panel";
 import { ParticipantCard } from "@/components/participant-card";
 import { CarVisualization } from "@/components/car-visualization";
+import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,12 +35,13 @@ function DraggableRider({ participant }: { participant: Participant }) {
     <button
       ref={setNodeRef}
       style={style}
-      className="w-full rounded-md border border-zinc-200 bg-white p-2 text-left text-sm"
+      className="w-full rounded-md border border-zinc-200 bg-white p-2 text-left text-sm flex items-center justify-between gap-2"
       {...listeners}
       {...attributes}
       type="button"
     >
-      {participant.name}
+      <span>{participant.name}</span>
+      <PreferredPartnersTooltip participant={participant} />
     </button>
   );
 }

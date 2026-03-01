@@ -3,6 +3,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
+import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
 import { cn } from "@/lib/utils";
 import type { Car, Participant } from "@/types";
 
@@ -35,8 +36,9 @@ function DraggableOccupant({ occupant }: { occupant: Participant }) {
       {...listeners}
       {...attributes}
     >
-      <span className="line-clamp-2 text-center text-xs font-bold text-zinc-900">
+      <span className="text-center text-xs font-bold text-zinc-900 flex items-center gap-1">
         {occupant.name}
+        <PreferredPartnersTooltip participant={occupant} />
       </span>
     </button>
   );
@@ -62,10 +64,11 @@ function Seat({ seatId, seatLabel, occupant, isDriver }: SeatProps) {
       {occupant ? (
         isDriver ? (
           <>
-            <span className="text-xs font-bold text-zinc-900">
+            <span className="text-xs font-bold text-zinc-900 flex items-center justify-center gap-1">
               {occupant.name}
+              <PreferredPartnersTooltip participant={occupant} />
             </span>
-            <span className="line-clamp-2 text-center text-[10px] text-zinc-600">
+            <span className="text-center text-[10px] text-zinc-600">
               Driver
             </span>
           </>

@@ -12,6 +12,7 @@ type SheetRow = {
   seats?: string;
   riderPreferences?: string;
   notes?: string;
+  preferredRidePartners?: string;
 };
 
 function parseBool(value: string | undefined): boolean {
@@ -21,6 +22,11 @@ function parseBool(value: string | undefined): boolean {
 
 function rowToParticipant(row: SheetRow, idx: number) {
   const id = row.id?.trim() || `${idx + 1}`;
+  const preferredPartnersStr = row.preferredRidePartners?.trim() || "";
+  const preferredRidePartners: string[] = preferredPartnersStr 
+    ? preferredPartnersStr.split(",").map(s => s.trim()).filter(Boolean)
+    : [];
+  
   return {
     id,
     name: row.name?.trim() || `Participant ${id}`,
@@ -31,6 +37,7 @@ function rowToParticipant(row: SheetRow, idx: number) {
     seats: Number(row.seats || 0) || 0,
     riderPreferences: row.riderPreferences?.trim() || "",
     sourceNotes: row.notes?.trim() || "",
+    preferredRidePartners: preferredRidePartners || [],
   } satisfies Omit<
     Participant,
     "status" | "isOfficer" | "appNotes" | "carId" | "seatIndex" | "checkInState"
@@ -95,6 +102,7 @@ export async function fetchSheetParticipants() {
       seats: row.seats,
       riderPreferences: row.riderPreferences,
       notes: row.notes,
+      preferredRidePartners: row.preferredRidePartners,
     } satisfies SheetRow;
   });
 

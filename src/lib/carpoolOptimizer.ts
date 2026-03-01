@@ -71,6 +71,30 @@ export function optimizeCarpoolAssignments(
 
       let score = similarity(rider.riderPreferences, driver.riderPreferences);
 
+      // Boost score if driver is in rider's preferred partners list
+      if (rider.preferredRidePartners && rider.preferredRidePartners.includes(driver.name)) {
+        score += 5.0;
+      }
+
+      // Boost score if any preferred partners are already in this car
+      if (rider.preferredRidePartners && rider.preferredRidePartners.length > 0) {
+        const ridersInCar = car.riderIds
+          .map((id) => participants.find((p) => p.id === id))
+          .filter((p): p is Participant => p !== undefined);
+        
+        const preferredPartnersInCar = ridersInCar.filter((p) =>
+          rider.preferredRidePartners.includes(p.name)
+        ).length;
+
+        // Give significant boost for each preferred partner in the car
+        score += preferredPartnersInCar * 3.0;
+      }
+
+      // Also check if the driver prefers this rider
+      if (driver.preferredRidePartners && driver.preferredRidePartners.includes(rider.name)) {
+        score += 2.0;
+      }
+
       if (prioritizeOfficers && rider.isOfficer) {
         const officerRidersInCar = car.riderIds
           .map((id) => participants.find((p) => p.id === id))

@@ -18,6 +18,7 @@ export interface Participant {
   seats: number;
   riderPreferences: string;
   sourceNotes: string;
+  preferredRidePartners: string[];
 
   status: EventStatus;
   isOfficer: boolean;

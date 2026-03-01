@@ -44,6 +44,12 @@ export function ParticipantCard({
         <div className="text-xs text-zinc-500">
           Preferences: {participant.riderPreferences || "None"}
         </div>
+        {participant.preferredRidePartners && participant.preferredRidePartners.length > 0 && (
+          <div className="text-xs">
+            <span className="font-semibold text-zinc-700">Prefers to ride with: </span>
+            <span className="text-zinc-600">{participant.preferredRidePartners.join(", ")}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Input
             value={note}
