@@ -11,6 +11,7 @@ import { ParticipantTable } from "@/components/participants/participant-table";
 import { CarVisualization } from "@/components/carpool/car-visualization";
 import { DraggableRider } from "@/components/carpool/draggable-rider";
 import { UnassignedLane } from "@/components/carpool/unassigned-lane";
+import { WaitlistLane } from "@/components/carpool/waitlist-lane";
 import { SelfDriversLane } from "@/components/carpool/self-drivers-lane";
 import {
   FilterBar,
@@ -46,6 +47,9 @@ export function OperationsStudio({
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [sortBy, setSortBy] = useState<SortBy>("name");
   const [viewMode, setViewMode] = useState<"list" | "table">("list");
+  const [autoAssignEligibility, setAutoAssignEligibility] = useState<
+    "all" | "confirmed" | "present"
+  >("all");
   const [isPending, startTransition] = useTransition();
 
   const participantsById = useMemo(
@@ -76,6 +80,37 @@ export function OperationsStudio({
     () => getUnassignedRiders(riders, driversById),
     [riders, driversById],
   );
+
+  const totalRiderSeatCapacity = useMemo(
+    () => data.cars.reduce((sum, car) => sum + car.seatsTotal, 0),
+    [data.cars],
+  );
+
+  const assignedRiderCount = useMemo(
+    () => riders.length - unassigned.length,
+    [riders.length, unassigned.length],
+  );
+
+  const { ridersStillUnassigned, waitlist } = useMemo(() => {
+    const seatsRemaining = Math.max(totalRiderSeatCapacity - assignedRiderCount, 0);
+
+    const prioritizedUnassigned = [...unassigned].sort((a, b) => {
+      if (a.isPaidMember !== b.isPaidMember) {
+        return a.isPaidMember ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const canStillBePlacedCount = Math.min(
+      seatsRemaining,
+      prioritizedUnassigned.length,
+    );
+
+    return {
+      ridersStillUnassigned: prioritizedUnassigned.slice(0, canStillBePlacedCount),
+      waitlist: prioritizedUnassigned.slice(canStillBePlacedCount),
+    };
+  }, [unassigned, totalRiderSeatCapacity, assignedRiderCount]);
 
   function mutate(path: string, init: RequestInit) {
     startTransition(async () => {
@@ -329,32 +364,60 @@ export function OperationsStudio({
                 <div className="space-y-5">
                   <Card>
                     <CardContent className="pt-4">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full"
-                        onClick={() =>
-                          mutate("/api/carpool/auto-assign", {
-                            method: "POST",
-                            body: JSON.stringify({
-                              prioritizeOfficers: true,
-                              sheetId,
-                            }),
-                          })
-                        }
-                      >
-                        Auto Assign
-                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() =>
+                            mutate("/api/carpool/auto-assign", {
+                              method: "POST",
+                              body: JSON.stringify({
+                                prioritizeOfficers: true,
+                                assignmentScope: autoAssignEligibility,
+                                sheetId,
+                              }),
+                            })
+                          }
+                        >
+                          Auto Assign
+                        </Button>
+
+                        <label className="block text-xs text-zinc-600">
+                          Auto-assign only:
+                        </label>
+                        <select
+                          className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm"
+                          value={autoAssignEligibility}
+                          onChange={(e) =>
+                            setAutoAssignEligibility(
+                              e.target.value as "all" | "confirmed" | "present",
+                            )
+                          }
+                        >
+                          <option value="all">Everyone</option>
+                          <option value="confirmed">Confirmed only</option>
+                          <option value="present">Present only</option>
+                        </select>
+                      </div>
                     </CardContent>
                   </Card>
                   <UnassignedLane>
-                    {unassigned.map((participant) => (
+                    {ridersStillUnassigned.map((participant) => (
                       <DraggableRider
                         key={participant.id}
                         participant={participant}
                       />
                     ))}
                   </UnassignedLane>
+                  <WaitlistLane>
+                    {waitlist.map((participant) => (
+                      <DraggableRider
+                        key={participant.id}
+                        participant={participant}
+                      />
+                    ))}
+                  </WaitlistLane>
                   <SelfDriversLane selfDrivers={selfDrivers} />
                 </div>
               </div>

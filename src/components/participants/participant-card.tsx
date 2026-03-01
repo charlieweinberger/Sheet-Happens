@@ -13,6 +13,8 @@ import { ParticipantRoleBadges } from "@/components/participants/participant-rol
 import { PaidMemberIcon } from "@/components/shared/paid-member-icon";
 import type { EventStatus, Participant } from "@/types";
 
+type DriverStatus = "rider" | "driver" | "self-driver";
+
 export function ParticipantCard({
   participant,
   onStatusChange,
@@ -32,6 +34,9 @@ export function ParticipantCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [notesReviewApproved, setNotesReviewApproved] = useState(participant.notesReviewApproved);
+  const [driverStatusDraft, setDriverStatusDraft] = useState<DriverStatus>(
+    participant.selfDriver ? "self-driver" : participant.driver ? "driver" : "rider",
+  );
   const driverStatusRef = useRef<{ getValue: () => { driver: boolean; selfDriver: boolean } }>(null);
   const seatsRef = useRef<{ getValue: () => number }>(null);
   const preferencesRef = useRef<{ getValue: () => string[] }>(null);
@@ -44,12 +49,14 @@ export function ParticipantCard({
   };
 
   const handleSave = () => {
+    const draftIsDriver = driverStatusDraft === "driver";
+
     // Call all the save handlers with current values from refs
     if (driverStatusRef.current) {
       const { driver, selfDriver } = driverStatusRef.current.getValue();
       onSaveDriverStatus(participant.id, driver, selfDriver);
     }
-    if (seatsRef.current && participant.driver && !participant.selfDriver) {
+    if (seatsRef.current && draftIsDriver) {
       const seats = seatsRef.current.getValue();
       onSaveSeats(participant.id, seats);
     }
@@ -113,12 +120,16 @@ export function ParticipantCard({
           driver={participant.driver}
           selfDriver={participant.selfDriver}
           forceEditMode={isEditing}
+          onStatusChange={setDriverStatusDraft}
         />
-        {participant.driver && !participant.selfDriver && (
+        {driverStatusDraft === "driver" && (
           <ParticipantSeats
             ref={seatsRef}
             seats={participant.seats}
-            needsReview={participant.needsManualReviewDriverCapacity}
+            needsReview={
+              participant.needsManualReviewDriverCapacity &&
+              !participant.driverCapacityReviewApproved
+            }
             forceEditMode={isEditing}
           />
         )}

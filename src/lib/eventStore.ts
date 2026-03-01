@@ -555,9 +555,26 @@ export async function assignRiderToCar(
   return getEventData(sheetId);
 }
 
-export async function autoAssignCars(prioritizeOfficers: boolean, sheetId?: string) {
+export async function autoAssignCars(
+  prioritizeOfficers: boolean,
+  sheetId?: string,
+  assignmentScope: "all" | "confirmed" | "present" = "all",
+) {
   const participants = await syncFromSheet(sheetId);
-  const result = optimizeCarpoolAssignments(participants, prioritizeOfficers);
+  const assignableParticipants = participants.filter((participant) => {
+    if (assignmentScope === "all") return true;
+    if (assignmentScope === "confirmed") {
+      return (
+        participant.status === "confirmed" || participant.status === "present"
+      );
+    }
+    return participant.status === assignmentScope;
+  });
+
+  const result = optimizeCarpoolAssignments(
+    assignableParticipants,
+    prioritizeOfficers,
+  );
 
   const riderIds = participants
     .filter((p) => !p.driver && !p.selfDriver)

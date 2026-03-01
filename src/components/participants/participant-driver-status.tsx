@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useState, useImperativeHandle, forwardRef } from "react";
 
 type DriverStatus = "rider" | "driver" | "self-driver";
 
@@ -8,12 +8,13 @@ interface ParticipantDriverStatusProps {
   driver: boolean;
   selfDriver: boolean;
   forceEditMode?: boolean;
+  onStatusChange?: (status: DriverStatus) => void;
 }
 
 export const ParticipantDriverStatus = forwardRef<
   { getValue: () => { driver: boolean; selfDriver: boolean } },
   ParticipantDriverStatusProps
->(({ driver, selfDriver, forceEditMode = false }, ref) => {
+>(({ driver, selfDriver, forceEditMode = false, onStatusChange }, ref) => {
   const getCurrentStatus = (): DriverStatus => {
     if (selfDriver) return "self-driver";
     if (driver) return "driver";
@@ -21,6 +22,13 @@ export const ParticipantDriverStatus = forwardRef<
   };
 
   const [status, setStatus] = useState<DriverStatus>(getCurrentStatus());
+
+  useEffect(() => {
+    const nextStatus = getCurrentStatus();
+    setStatus(nextStatus);
+    onStatusChange?.(nextStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driver, selfDriver]);
 
   useImperativeHandle(ref, () => ({
     getValue: () => ({
@@ -52,7 +60,11 @@ export const ParticipantDriverStatus = forwardRef<
           </span>
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value as DriverStatus)}
+            onChange={(e) => {
+              const nextStatus = e.target.value as DriverStatus;
+              setStatus(nextStatus);
+              onStatusChange?.(nextStatus);
+            }}
             className="text-sm border border-zinc-300 rounded px-2 py-1"
             autoFocus
           >
