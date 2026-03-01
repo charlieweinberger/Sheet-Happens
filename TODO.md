@@ -13,7 +13,9 @@
 3. Use AI to detect rider preferences
 4. voice -> AI -> update (e.g. I say "Alex in John's car" -> AI parses my voice and visually puts Alex in John's car)
 
-5. Add manual overrides (e.g. override ride preferences, in case name is wrong; others, if needed)
+5. manual overrides
+   1. update driver capacity
+   2. update role (rider/self-driver -> driver)
 
 # Overall To-Do Items
 

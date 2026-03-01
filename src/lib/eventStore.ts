@@ -19,6 +19,9 @@ function toParticipant(
     isOfficer: boolean;
     appNotes: string;
     preferredRidePartners: string;
+    driver: boolean | null;
+    selfDriver: boolean | null;
+    seats: number | null;
     carId: string | null;
     seatIndex: number | null;
     checkInState: string | null;
@@ -35,8 +38,24 @@ function toParticipant(
         .filter(Boolean)
     : sheet.preferredRidePartners;
 
+  // Use database driver/selfDriver if available, otherwise use sheet value
+  const driver = local?.driver !== null && local?.driver !== undefined
+    ? Boolean(local.driver)
+    : sheet.driver;
+  const selfDriver = local?.selfDriver !== null && local?.selfDriver !== undefined
+    ? Boolean(local.selfDriver)
+    : sheet.selfDriver;
+
+  // Use database seats if available, otherwise use sheet value
+  const seats = local?.seats !== null && local?.seats !== undefined
+    ? local.seats
+    : sheet.seats;
+
   return {
     ...sheet,
+    driver,
+    selfDriver,
+    seats,
     preferredRidePartners,
     status: (local?.status as EventStatus) ?? "awaiting",
     isOfficer,
@@ -130,23 +149,57 @@ export async function syncFromSheet() {
         isOfficer: false,
         appNotes: "",
         preferredRidePartners: participant.preferredRidePartners.join(", "),
+        driver: participant.driver,
+        selfDriver: participant.selfDriver,
+        seats: participant.seats,
         carId: null,
         seatIndex: null,
         checkInState: null,
         updatedAt: new Date(),
       });
-    } else if (
-      existing[0].preferredRidePartners === "" &&
-      participant.preferredRidePartners.length > 0
-    ) {
+    } else {
       // Backfill preferredRidePartners from sheet if DB has empty string
-      await db
-        .update(participantState)
-        .set({
-          preferredRidePartners: participant.preferredRidePartners.join(", "),
-          updatedAt: new Date(),
-        })
-        .where(eq(participantState.participantId, participant.id));
+      if (
+        existing[0].preferredRidePartners === "" &&
+        participant.preferredRidePartners.length > 0
+      ) {
+        await db
+          .update(participantState)
+          .set({
+            preferredRidePartners: participant.preferredRidePartners.join(", "),
+            updatedAt: new Date(),
+          })
+          .where(eq(participantState.participantId, participant.id));
+      }
+      // Backfill seats from sheet if DB has null
+      if (
+        (existing[0].seats === null || existing[0].seats === undefined) &&
+        participant.seats !== null &&
+        participant.seats !== undefined
+      ) {
+        await db
+          .update(participantState)
+          .set({
+            seats: participant.seats,
+            updatedAt: new Date(),
+          })
+          .where(eq(participantState.participantId, participant.id));
+      }
+      // Backfill driver/selfDriver from sheet if DB has null
+      if (
+        (existing[0].driver === null || existing[0].driver === undefined) &&
+        participant.driver !== null &&
+        participant.driver !== undefined
+      ) {
+        await db
+          .update(participantState)
+          .set({
+            driver: participant.driver,
+            selfDriver: participant.selfDriver,
+            updatedAt: new Date(),
+          })
+          .where(eq(participantState.participantId, participant.id));
+      }
     }
   }
 
@@ -254,6 +307,9 @@ export async function updateParticipantState(
     isOfficer: boolean;
     appNotes: string;
     preferredRidePartners: string[];
+    driver: boolean;
+    selfDriver: boolean;
+    seats: number;
     carId: string | null;
     seatIndex: number | null;
     checkInState: Participant["checkInState"];
@@ -276,6 +332,9 @@ export async function updateParticipantState(
     payload.appNotes = updates.appNotes;
   if (typeof updates.preferredRidePartners !== "undefined")
     payload.preferredRidePartners = updates.preferredRidePartners.join(", ");
+  if (typeof updates.driver !== "undefined") payload.driver = updates.driver;
+  if (typeof updates.selfDriver !== "undefined") payload.selfDriver = updates.selfDriver;
+  if (typeof updates.seats !== "undefined") payload.seats = updates.seats;
   if (typeof updates.carId !== "undefined") payload.carId = updates.carId;
   if (typeof updates.seatIndex !== "undefined")
     payload.seatIndex = updates.seatIndex;

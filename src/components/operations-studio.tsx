@@ -193,6 +193,12 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                     onSavePreferences={(id, preferredRidePartners) =>
                       updateParticipant(id, { preferredRidePartners })
                     }
+                    onSaveSeats={(id, seats) =>
+                      updateParticipant(id, { seats })
+                    }
+                    onSaveDriverStatus={(id, driver, selfDriver) =>
+                      updateParticipant(id, { driver, selfDriver })
+                    }
                   />
                 ) : (
                   <ParticipantTable

@@ -16,6 +16,9 @@ export async function PATCH(
     carId: string | null;
     checkInState: Participant["checkInState"];
     preferredRidePartners: string[];
+    driver: boolean;
+    selfDriver: boolean;
+    seats: number;
   }>;
 
   const data = await updateParticipantState(id, body);
