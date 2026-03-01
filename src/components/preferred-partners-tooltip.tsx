@@ -1,4 +1,4 @@
-import { User } from "lucide-react";
+import { Info } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { Participant } from "@/types";
 
@@ -18,7 +18,7 @@ export function PreferredPartnersTooltip({ participant }: { participant: Partici
         </div>
       }
     >
-      <User className="h-3 w-3 text-zinc-500 shrink-0" />
+      <Info className="h-3 w-3 text-zinc-500 shrink-0" />
     </Tooltip>
   );
 }
