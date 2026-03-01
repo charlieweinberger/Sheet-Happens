@@ -4,6 +4,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
+import { getStatusBorderColor, getStatusLightBgColor, getStatusDarkTextColor } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 import type { Car, Participant } from "@/types";
 
@@ -23,7 +24,6 @@ function DraggableOccupant({ occupant }: { occupant: Participant }) {
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 60 : 10,
   };
 
   return (
@@ -31,12 +31,16 @@ function DraggableOccupant({ occupant }: { occupant: Participant }) {
       ref={setNodeRef}
       style={style}
       type="button"
-      className="relative z-10 flex w-full h-full touch-none flex-col items-center justify-center rounded-md bg-transparent px-1 py-1"
+      className={cn(
+        "relative flex w-full h-full touch-none flex-col items-center justify-center rounded-md px-1 py-1",
+        getStatusBorderColor(occupant.status),
+        getStatusLightBgColor(occupant.status),
+      )}
       title={occupant.name}
       {...listeners}
       {...attributes}
     >
-      <span className="text-center text-xs font-bold text-zinc-900 flex items-center gap-1">
+      <span className={cn("text-center text-xs font-bold flex items-center gap-1", getStatusDarkTextColor(occupant.status))}>
         {occupant.name}
         <PreferredPartnersTooltip participant={occupant} />
       </span>
@@ -54,21 +58,22 @@ function Seat({ seatId, seatLabel, occupant, isDriver }: SeatProps) {
       ref={setNodeRef}
       className={cn(
         "relative flex h-20 flex-col items-center justify-center rounded-lg border-2 font-semibold transition-all",
-        isDriver ? "border-amber-400 bg-amber-50" : "border-zinc-300 bg-white",
+        !occupant && (isDriver ? "border-amber-400 bg-amber-50" : "border-zinc-300 bg-white"),
         isOver &&
           "border-zinc-900 bg-zinc-100 shadow-md ring-2 ring-zinc-500 ring-offset-1",
-        occupant && "border-emerald-500 bg-emerald-50",
+        occupant && getStatusBorderColor(occupant.status),
+        occupant && getStatusLightBgColor(occupant.status),
       )}
       title={occupant ? occupant.name : seatLabel}
     >
       {occupant ? (
         isDriver ? (
           <>
-            <span className="text-xs font-bold text-zinc-900 flex items-center justify-center gap-1">
+            <span className={cn("text-xs font-bold flex items-center justify-center gap-1", getStatusDarkTextColor(occupant.status))}>
               {occupant.name}
               <PreferredPartnersTooltip participant={occupant} />
             </span>
-            <span className="text-center text-[10px] text-zinc-600">
+            <span className={cn("text-center text-[10px]", getStatusDarkTextColor(occupant.status))}>
               Driver
             </span>
           </>

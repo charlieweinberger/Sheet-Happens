@@ -18,8 +18,9 @@
 
 # Advanced Features
 
-1. voice -> AI -> update (e.g. I say "Alex in John's car" -> AI parses my voice and visually puts Alex in John's car)
-2. auto-send confirmation texts w/ Twilio
+1. Use AI to detect rider preferences
+2. voice -> AI -> update (e.g. I say "Alex in John's car" -> AI parses my voice and visually puts Alex in John's car)
+3. auto-send confirmation texts w/ Twilio
 
 # Overall To-Do Items
 

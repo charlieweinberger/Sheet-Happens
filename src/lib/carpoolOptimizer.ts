@@ -102,7 +102,9 @@ export function optimizeCarpoolAssignments(
         score += officerRidersInCar > 0 ? 1.5 : 0.5;
       }
 
-      score += (car.seatsTotal - car.seatsUsed) * 0.1;
+      // Spread mode: prefer cars with fewer riders to distribute evenly
+      // Give negative score for each rider already in car to spread out
+      score -= car.seatsUsed * 3.0;
 
       if (score > bestScore) {
         bestScore = score;

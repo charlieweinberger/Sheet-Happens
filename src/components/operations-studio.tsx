@@ -15,6 +15,8 @@ import { InsightPanel } from "@/components/insight-panel";
 import { ParticipantCard } from "@/components/participant-card";
 import { CarVisualization } from "@/components/car-visualization";
 import { PreferredPartnersTooltip } from "@/components/preferred-partners-tooltip";
+import { getStatusBorderColor, getStatusLightBgColor, getStatusDarkTextColor } from "@/lib/statusColors";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,12 +37,16 @@ function DraggableRider({ participant }: { participant: Participant }) {
     <button
       ref={setNodeRef}
       style={style}
-      className="w-full rounded-md border border-zinc-200 bg-white p-2 text-left text-sm flex items-center justify-between gap-2"
+      className={cn(
+        "w-full rounded-md border-2 p-2 text-left text-sm flex items-center justify-between gap-2",
+        getStatusBorderColor(participant.status),
+        getStatusLightBgColor(participant.status),
+      )}
       {...listeners}
       {...attributes}
       type="button"
     >
-      <span>{participant.name}</span>
+      <span className={getStatusDarkTextColor(participant.status)}>{participant.name}</span>
       <PreferredPartnersTooltip participant={participant} />
     </button>
   );
@@ -356,7 +362,7 @@ export function OperationsStudio({ initialData }: { initialData: EventData }) {
                     {filteredParticipants.map((participant) => (
                       <div
                         key={participant.id}
-                        className={`rounded-lg border-2 ${
+                        className={`rounded-xl border-2 ${
                           participant.status === "text_sent"
                             ? "border-purple-400 bg-purple-50"
                             : participant.status === "ambiguous"
