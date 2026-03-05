@@ -18,30 +18,63 @@ function rowToParticipant(row: SheetRow, idx: number) {
   const id = email;
   
   // Parse ride situation to determine driver/rider status
-  const rideSituation = row.rideSituation?.trim().toLowerCase() || "";
+  const rideSituation = row.rideSituation?.trim() || "";
+  const rideSituationLower = rideSituation.toLowerCase();
   let isDriver = false;
   let isSelfDriver = false;
   
-  if (rideSituation.includes("provide rides")) {
-    // "I have my own ride and can provide rides to others! (Thank you!!)"
+  // Check for driver first (can drive others)
+  if (rideSituationLower.includes("can drive")) {
+    // "I have my own ride and can drive others (thank you!!)"
     isDriver = true;
     isSelfDriver = false;
-  } else if (rideSituation.includes("i have my own ride")) {
+    console.log(`✓ ${row.name} is a DRIVER`);
+  } 
+  // Then check for self-driver (has own ride but not driving others)
+  else if (rideSituationLower.includes("have my own ride")) {
     // "I have my own ride!"
     isDriver = false;
     isSelfDriver = true;
-  } else {
+    console.log(`✓ ${row.name} is a SELF-DRIVER`);
+  } 
+  // Default to rider (needs a ride)
+  else {
     // "I need a ride!" or anything else defaults to rider
     isDriver = false;
     isSelfDriver = false;
+    console.log(`✓ ${row.name} is a RIDER`);
   }
   
   // Parse driver capacity - always flag for manual review if they're a driver
   let seats = 0;
   const needsManualReviewDriverCapacity = isDriver;
-  if (isDriver && row.driverCapacity) {
-    const capacityMatch = row.driverCapacity.match(/\d+/);
-    seats = capacityMatch ? Number(capacityMatch[0]) : 0;
+  if (isDriver) {
+    console.log(`  Driver capacity field for ${row.name}:`, JSON.stringify(row.driverCapacity));
+    if (row.driverCapacity) {
+      const capacityLower = row.driverCapacity.toLowerCase();
+      
+      // Map text numbers to digits
+      const textToNumber: Record<string, number> = {
+        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
+      };
+      
+      // First try to find a digit
+      const digitMatch = row.driverCapacity.match(/\d+/);
+      if (digitMatch) {
+        seats = Number(digitMatch[0]);
+      } else {
+        // Try to find text numbers
+        for (const [text, num] of Object.entries(textToNumber)) {
+          if (capacityLower.includes(text)) {
+            seats = num;
+            break;
+          }
+        }
+      }
+      
+      console.log(`  Parsed seats: ${seats}`);
+    }
   }
   
   // Parse comments - flag for manual review if non-empty
@@ -132,7 +165,7 @@ export async function listGoogleSheets(): Promise<GoogleSheetMetadata[]> {
 export async function fetchSheetParticipants(sheetId?: string) {
   const defaultSheetId = process.env.GOOGLE_SHEET_ID;
   const targetSheetId = sheetId || defaultSheetId;
-  const sheetRange = "Form Responses 1!A:H";
+  const sheetRange = "Form Responses 1";
   const serviceAccount = extractServiceAccount();
 
   if (!serviceAccount) {
@@ -159,28 +192,54 @@ export async function fetchSheetParticipants(sheetId?: string) {
   const rows = response.data.values ?? [];
   if (rows.length <= 1) return [];
 
-  const [, ...valueRows] = rows;
+  const [headerRow, ...valueRows] = rows;
+
+  // Define the expected column titles
+  const columnTitles = {
+    timestamp: "Timestamp",
+    name: "Name",
+    email: "UCI Email",
+    phone: "Phone Number",
+    discord: "Discord Handle (optional)",
+    rideSituation: "Ride situation?",
+    driverCapacity: "For drivers: how many people can you take?",
+    comments: "Questions, comments, or concerns?",
+  };
+
+  // Find the index of each column by searching for the header title
+  const columnIndices: Record<keyof typeof columnTitles, number> = {
+    timestamp: -1,
+    name: -1,
+    email: -1,
+    phone: -1,
+    discord: -1,
+    rideSituation: -1,
+    driverCapacity: -1,
+    comments: -1,
+  };
+
+  // Search for each column title in the header row
+  for (const [key, title] of Object.entries(columnTitles)) {
+    const index = headerRow.findIndex(
+      (header) => header?.trim().toLowerCase() === title.toLowerCase()
+    );
+    if (index !== -1) {
+      columnIndices[key as keyof typeof columnTitles] = index;
+    } else {
+      console.warn(`Column "${title}" not found in sheet headers`);
+    }
+  }
 
   const objects = valueRows.map((values) => {
-    // Map the 9 columns from the Google Form:
-    // 0: Timestamp
-    // 1: Name
-    // 2: UCI Email
-    // 3: Phone Number
-    // 4: Discord Handle
-    // 5: Ride Situation?
-    // 6: For drivers: how many passengers...
-    // 7: Any questions, comments, or concerns?
-    
     return {
-      timestamp: String(values[0] ?? ""),
-      name: String(values[1] ?? ""),
-      email: String(values[2] ?? ""),
-      phone: String(values[3] ?? ""),
-      discord: String(values[4] ?? ""),
-      rideSituation: String(values[5] ?? ""),
-      driverCapacity: String(values[6] ?? ""),
-      comments: String(values[7] ?? ""),
+      timestamp: columnIndices.timestamp !== -1 ? String(values[columnIndices.timestamp] ?? "") : "",
+      name: columnIndices.name !== -1 ? String(values[columnIndices.name] ?? "") : "",
+      email: columnIndices.email !== -1 ? String(values[columnIndices.email] ?? "") : "",
+      phone: columnIndices.phone !== -1 ? String(values[columnIndices.phone] ?? "") : "",
+      discord: columnIndices.discord !== -1 ? String(values[columnIndices.discord] ?? "") : "",
+      rideSituation: columnIndices.rideSituation !== -1 ? String(values[columnIndices.rideSituation] ?? "") : "",
+      driverCapacity: columnIndices.driverCapacity !== -1 ? String(values[columnIndices.driverCapacity] ?? "") : "",
+      comments: columnIndices.comments !== -1 ? String(values[columnIndices.comments] ?? "") : "",
     } satisfies SheetRow;
   });
 

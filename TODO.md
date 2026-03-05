@@ -11,7 +11,11 @@
 - connect to larger event system
   - remember users between events, and draw insights from that (e.g. typical rider preferences)
   - build larger event/user database
+- update how/when spreadsheet loads
+  - store spreadsheet in db
+  - add button that re-pulls data from spreadsheet (and overrides some data? how to deal with merge conflicts?)
 - Add a mobile view
+- Add the ability to manually add/delete people? (Dangerous b/c of merge conflicts)
 - Automated SMS texting w/ Twilio
   - use AI to parse people's responses
   - dashboard to view people's responses

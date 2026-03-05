@@ -41,16 +41,17 @@ function toParticipant(
         .filter(Boolean)
     : sheet.preferredRidePartners;
 
-  // Use database driver/selfDriver if available, otherwise use sheet value
-  const driver = local?.driver !== null && local?.driver !== undefined
+  // Use database driver/selfDriver/seats only if approved in manual review
+  // Otherwise, always use the fresh sheet values as source of truth
+  const driver = local?.driverCapacityReviewApproved && local?.driver !== null && local?.driver !== undefined
     ? Boolean(local.driver)
     : sheet.driver;
-  const selfDriver = local?.selfDriver !== null && local?.selfDriver !== undefined
+  const selfDriver = local?.driverCapacityReviewApproved && local?.selfDriver !== null && local?.selfDriver !== undefined
     ? Boolean(local.selfDriver)
     : sheet.selfDriver;
 
-  // Use database seats if available, otherwise use sheet value
-  const seats = local?.seats !== null && local?.seats !== undefined
+  // Use database seats if approved in manual review, otherwise use sheet value
+  const seats = local?.driverCapacityReviewApproved && local?.seats !== null && local?.seats !== undefined
     ? local.seats
     : sheet.seats;
 
